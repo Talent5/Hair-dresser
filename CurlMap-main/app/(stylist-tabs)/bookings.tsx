@@ -267,11 +267,22 @@ const BookingItem: React.FC<BookingItemProps> = ({ booking, onStatusUpdate, rout
     return isStylist ? 'Customer' : 'Stylist';
   };
 
+  const handlePress = () => {
+    router.push({
+      pathname: '/booking-detail',
+      params: { bookingId: booking._id }
+    });
+  };
+
   return (
-    <View style={[
-      styles.bookingItem, 
-      booking.status === 'pending' && styles.pendingBookingItem
-    ]}>
+    <TouchableOpacity 
+      style={[
+        styles.bookingItem, 
+        booking.status === 'pending' && styles.pendingBookingItem
+      ]}
+      onPress={handlePress}
+      activeOpacity={0.7}
+    >
       <View style={styles.bookingHeader}>
         <Text style={styles.serviceName}>{booking.service.name}</Text>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
@@ -305,9 +316,11 @@ const BookingItem: React.FC<BookingItemProps> = ({ booking, onStatusUpdate, rout
         </View>
       </View>
 
-      {/* Render different actions based on user role */}
-      {isStylist ? renderStylistActions() : renderCustomerActions()}
-    </View>
+      <View style={styles.tapToViewContainer}>
+        <Ionicons name="chevron-forward-outline" size={20} color={COLORS.PRIMARY} />
+        <Text style={styles.tapToViewText}>Tap to view details</Text>
+      </View>
+    </TouchableOpacity>
   );
 };
 
@@ -650,6 +663,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.SM,
   },
+  detailLabel: {
+    fontSize: FONT_SIZES.SM,
+    color: '#666',
+    fontWeight: '600',
+  },
   detailText: {
     fontSize: FONT_SIZES.SM,
     color: '#666',
@@ -803,5 +821,20 @@ const styles = StyleSheet.create({
     color: COLORS.WHITE,
     fontSize: FONT_SIZES.MD,
     fontWeight: '600',
+  },
+  tapToViewContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: SPACING.SM,
+    paddingTop: SPACING.SM,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  tapToViewText: {
+    fontSize: FONT_SIZES.SM,
+    color: COLORS.PRIMARY,
+    fontWeight: '500',
+    marginLeft: SPACING.XS,
   },
 });

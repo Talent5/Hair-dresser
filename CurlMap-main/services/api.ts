@@ -315,6 +315,11 @@ class ApiService {
     return response.data;
   }
 
+  async getBookingById(bookingId: string): Promise<ApiResponse<Booking>> {
+    const response = await this.client.get(`/bookings/${bookingId}`);
+    return response.data;
+  }
+
   async updateBookingStatus(bookingId: string, status: string, reason?: string): Promise<ApiResponse<Booking>> {
     const response = await this.client.patch(`/bookings/${bookingId}/status`, { status, reason });
     return response.data;
