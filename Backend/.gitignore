@@ -1,26 +1,18 @@
-# Logs
-logs
-*.log
+# Dependencies
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
-
-# Dependencies
-node_modules
-node_modules/
-
-# Build artifacts
-dist
-dist-ssr
-build
 
 # Environment variables
 .env
 .env.*
 !.env.example
-*.local
+
+# Logs
+logs/
+*.log
 
 # Runtime data
 pids
@@ -33,8 +25,21 @@ coverage/
 *.lcov
 .nyc_output
 
+# Build artifacts
+build/
+dist/
+
 # TypeScript
 *.tsbuildinfo
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads
+uploads/
+public/uploads/
 
 # Editor directories and files
 .vscode/*

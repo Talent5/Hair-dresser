@@ -155,6 +155,17 @@ export interface Chat {
   updatedAt: string;
 }
 
+// Message Status Types
+export type MessageDeliveryStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+
+export interface MessageStatus {
+  status: MessageDeliveryStatus;
+  sentAt?: string;
+  deliveredAt?: string;
+  readAt?: string;
+  failureReason?: string;
+}
+
 export interface ChatMessage {
   _id: string;
   senderId: string;
@@ -174,6 +185,7 @@ export interface ChatMessage {
     };
   };
   timestamp: string;
+  messageStatus?: MessageStatus;
   readBy?: Array<{
     userId: string;
     readAt: string;

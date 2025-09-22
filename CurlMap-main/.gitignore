@@ -1,5 +1,6 @@
 # dependencies
 node_modules/
+node_modules
 
 # expo
 .expo/
@@ -30,6 +31,64 @@ yarn-error.*
 # local env files
 .env*.local
 .env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
+
+# logs
+logs/
+*.log
+
+# build artifacts
+build/
+out/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory
+coverage/
+*.lcov
+.nyc_output
+
+# Testing
+.jest/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Android
+android/app/build/
+android/build/
+android/.gradle/
+android/captures/
+android/gradle/
+android/local.properties
+
+# iOS
+ios/build/
+ios/Pods/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/Podfile.lock

@@ -29,7 +29,11 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: [
+      "http://localhost:3000", 
+      "http://localhost:3001",
+      "https://hair-dresser-adkn.onrender.com"
+    ],
     methods: ["GET", "POST"]
   }
 });
@@ -37,11 +41,46 @@ const io = socketIo(server, {
 // Security middleware
 app.use(helmet());
 
-// CORS configuration - simplified and more permissive for debugging
+// CORS configuration - Updated for production and mobile apps
 app.use(cors({
-  origin: true, // Allow all origins for now
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      "http://localhost:3000", 
+      "http://localhost:3001",
+      "https://hair-dresser-adkn.onrender.com"
+    ];
+    
+    // Allow mobile development IPs
+    const mobilePatterns = [
+      /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:\d+$/,
+      /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+$/,
+      /^http:\/\/172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}:\d+$/
+    ];
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Check if origin matches mobile patterns
+    for (const pattern of mobilePatterns) {
+      if (pattern.test(origin)) {
+        return callback(null, true);
+      }
+    }
+    
+    // Allow if no specific restrictions in development
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    callback(null, false);
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
   optionsSuccessStatus: 200
@@ -80,7 +119,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/curlmap',
   console.log('Connection database:', mongoose.connection.db.databaseName);
   
   // Make db name accessible to routes
-  app.set('db', mongoose.connection.name);
+  app.set('db', mongoose.connection.name); 
   
   // Create geospatial indexes after connection
   const User = require('./models/User');

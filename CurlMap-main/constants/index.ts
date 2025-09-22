@@ -2,10 +2,10 @@
 export const API_CONFIG = {
   BASE_URL: __DEV__ 
     ? 'http://192.168.0.49:5000/api' // Local Backend server using machine IP for mobile access
-    : 'https://curlmap-api.herokuapp.com/api',
+    : 'https://hair-dresser-adkn.onrender.com/api',
   SOCKET_URL: __DEV__ 
     ? 'http://192.168.0.49:5000' 
-    : 'https://curlmap-api.herokuapp.com',
+    : 'https://hair-dresser-adkn.onrender.com',
   TIMEOUT: 10000,
   RETRY_ATTEMPTS: 3,
 };

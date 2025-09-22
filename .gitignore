@@ -1,3 +1,4 @@
+# Project-specific files
 /Chapter4-Design-Phase.md
 /Chapter4-Design-Phase.pdf
 /Chapter5-Implementation-Testing.md
@@ -5,23 +6,137 @@
 /STYLIST_API_ENDPOINTS.md
 
 # Dependencies
-/node_modules
-**/node_modules
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.pnp.*
+.yarn/
+.pnpm-debug.log*
 
 # Environment variables
 .env
+.env.*
+!.env.example
 **/.env
+**/.env.*
+!**/.env.example
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+.nyc_output
+
+# Testing
+.jest/
+coverage/
+*.test.cache
+__tests__/__coverage__/
+
+# Build artifacts
+build/
+dist/
+dist-ssr/
+*.tsbuildinfo
+out/
+.next/
+.nuxt/
+.vercel/
+.turbo/
+
+# TypeScript
+*.d.ts.map
 
 # Expo
 .expo/
 **/.expo/
+web-build/
+expo-env.d.ts
+
+# React Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
 
 # Logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Build artifacts
-build/
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+*.tmp
+*.swp
+*~
+.sass-cache/
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+*.local
+
+# Runtime/production
+.next/
+.nuxt/
 dist/
+build/
+.output/
+.vercel/
+
+# Cloudinary
+cloudinary-config.json
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak
+*.backup
