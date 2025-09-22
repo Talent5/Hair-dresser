@@ -112,7 +112,12 @@ app.options('*', (req, res) => {
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/curlmap', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  dbName: 'test' // Explicitly specify the database name
+  dbName: 'test', // Explicitly specify the database name
+  serverSelectionTimeoutMS: 30000, // 30 seconds
+  socketTimeoutMS: 45000, // 45 seconds
+  maxPoolSize: 10, // Maintain up to 10 socket connections
+  minPoolSize: 5, // Maintain a minimum of 5 socket connections
+  maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
 })
 .then(() => {
   console.log('Connected to MongoDB');
@@ -129,7 +134,10 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/curlmap',
     else console.log('Geospatial index created successfully');
   });
 })
-.catch((error) => console.error('MongoDB connection error:', error));
+.catch((error) => {
+  console.error('MongoDB connection error:', error);
+  process.exit(1); // Exit process if can't connect to database
+});
 
 // Socket.IO authentication and chat handling
 io.use(socketAuth);
@@ -151,11 +159,32 @@ app.use('/api/admin', adminRoutes); // Admin routes with built-in auth
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({
+  const healthStatus = {
     status: 'OK',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  });
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    memory: process.memoryUsage(),
+    port: PORT,
+    host: HOST
+  };
+  
+  // Return 503 if database is not connected
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      ...healthStatus,
+      status: 'UNHEALTHY',
+      error: 'Database not connected'
+    });
+  }
+  
+  res.json(healthStatus);
+});
+
+// Render health check (simplified endpoint for monitoring)
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
 });
 
 // Root endpoint
@@ -181,10 +210,50 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || '0.0.0.0'; // Listen on all network interfaces for mobile access
 
+// Configure server timeouts for Render deployment
+server.keepAliveTimeout = 120000; // 120 seconds
+server.headersTimeout = 120000; // 120 seconds
+
 server.listen(PORT, HOST, () => {
   console.log(`CurlMap server running on ${HOST}:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Network accessible at: http://192.168.0.49:${PORT}`);
+  console.log(`Server timeouts configured: keepAlive=${server.keepAliveTimeout}ms, headers=${server.headersTimeout}ms`);
+});
+
+// Graceful shutdown handling
+const gracefulShutdown = (signal) => {
+  console.log(`\nReceived ${signal}. Starting graceful shutdown...`);
+  
+  server.close(() => {
+    console.log('HTTP server closed.');
+    
+    mongoose.connection.close(false, () => {
+      console.log('MongoDB connection closed.');
+      process.exit(0);
+    });
+  });
+  
+  // Force close after 30 seconds
+  setTimeout(() => {
+    console.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 30000);
+};
+
+// Listen for termination signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  gracefulShutdown('UNCAUGHT_EXCEPTION');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  gracefulShutdown('UNHANDLED_REJECTION');
 });
 
 module.exports = app;
