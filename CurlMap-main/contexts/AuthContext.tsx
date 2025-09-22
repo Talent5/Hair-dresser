@@ -56,6 +56,21 @@ const defaultAuthState: AuthState = {
   token: null,
 };
 
+// Helper function to safely store items in SecureStore
+const safeSecureStoreSet = async (key: string, value: string | null | undefined): Promise<boolean> => {
+  try {
+    if (!value || typeof value !== 'string') {
+      console.warn(`Skipping SecureStore.setItem for key "${key}": invalid value`, typeof value);
+      return false;
+    }
+    await SecureStore.setItemAsync(key, value);
+    return true;
+  } catch (error) {
+    console.error(`Failed to store ${key} in SecureStore:`, error);
+    return false;
+  }
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
@@ -175,9 +190,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 const { tokens } = refreshResult.data;
                 const userProfile = user; // Use stored user data since refresh doesn't return user
                 
-                // Store new tokens
-                await SecureStore.setItemAsync('auth_token', tokens.accessToken);
-                await SecureStore.setItemAsync('refresh_token', tokens.refreshToken);
+                // Store new tokens with validation using safe helper
+                await safeSecureStoreSet('auth_token', tokens.accessToken);
+                await safeSecureStoreSet('refresh_token', tokens.refreshToken);
                 
                 console.log('Auth Context - Token refreshed successfully');
                 setAuthState({
@@ -209,10 +224,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             return;
           }
           
-          // If not a network error, clear stored data
-          await SecureStore.deleteItemAsync('auth_token');
-          await SecureStore.deleteItemAsync('refresh_token');
-          await SecureStore.deleteItemAsync('user_data');
+          // If not a network error, clear stored data with error handling
+          try {
+            await SecureStore.deleteItemAsync('auth_token');
+          } catch (error) {
+            console.log('Error deleting auth_token during cleanup:', error);
+          }
+          
+          try {
+            await SecureStore.deleteItemAsync('refresh_token');
+          } catch (error) {
+            console.log('Error deleting refresh_token during cleanup:', error);
+          }
+          
+          try {
+            await SecureStore.deleteItemAsync('user_data');
+          } catch (error) {
+            console.log('Error deleting user_data during cleanup:', error);
+          }
         }
       }
       
@@ -247,10 +276,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const userProfile = convertUserToProfile(user, !!stylistProfile, stylistProfile);
         
         console.log('Auth Context - Storing auth data and setting authenticated state');
-        // Store auth data securely
-        await SecureStore.setItemAsync('auth_token', tokens.accessToken);
-        await SecureStore.setItemAsync('refresh_token', tokens.refreshToken);
-        await SecureStore.setItemAsync('user_data', JSON.stringify(userProfile));
+        // Store auth data securely using safe helper
+        await safeSecureStoreSet('auth_token', tokens.accessToken);
+        await safeSecureStoreSet('refresh_token', tokens.refreshToken);
+        await safeSecureStoreSet('user_data', JSON.stringify(userProfile));
         
         setAuthState({
           isAuthenticated: true,
@@ -307,12 +336,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { user, token, refreshToken, stylist } = result.data;
         const userProfile = convertUserToProfile(user, user.role === 'stylist', stylist);
         
-        // Store auth data securely
-        await SecureStore.setItemAsync('auth_token', token);
-        if (refreshToken) {
-          await SecureStore.setItemAsync('refresh_token', refreshToken);
+        // Store auth data securely with validation and error handling
+        try {
+          const tokenStored = await safeSecureStoreSet('auth_token', token);
+          const refreshTokenStored = await safeSecureStoreSet('refresh_token', refreshToken);
+          
+          if (userProfile) {
+            const userDataString = JSON.stringify(userProfile);
+            const userDataStored = await safeSecureStoreSet('user_data', userDataString);
+            console.log('Auth Context - Storage results:', { tokenStored, refreshTokenStored, userDataStored });
+          }
+        } catch (storageError) {
+          console.error('Auth Context - Storage error during registration:', storageError);
+          // Continue with auth state update even if storage fails
         }
-        await SecureStore.setItemAsync('user_data', JSON.stringify(userProfile));
         
         setAuthState({
           isAuthenticated: true,
@@ -334,6 +371,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       console.error('Auth Context - Registration error:', error);
       setAuthState(prev => ({ ...prev, isLoading: false }));
+      
+      // Provide more specific error messages for SecureStore issues
+      if (error.message && error.message.includes('SecureStore')) {
+        return { 
+          success: false, 
+          error: 'Storage error occurred. Please try again.' 
+        };
+      }
+      
       return { 
         success: false, 
         error: error.message || 'Network error. Please check your connection.' 
@@ -379,10 +425,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
       
-      // Clear stored data
-      await SecureStore.deleteItemAsync('auth_token');
-      await SecureStore.deleteItemAsync('refresh_token');
-      await SecureStore.deleteItemAsync('user_data');
+      // Clear stored data with error handling
+      try {
+        await SecureStore.deleteItemAsync('auth_token');
+      } catch (error) {
+        console.log('Error deleting auth_token:', error);
+      }
+      
+      try {
+        await SecureStore.deleteItemAsync('refresh_token');
+      } catch (error) {
+        console.log('Error deleting refresh_token:', error);
+      }
+      
+      try {
+        await SecureStore.deleteItemAsync('user_data');
+      } catch (error) {
+        console.log('Error deleting user_data:', error);
+      }
       
       setAuthState({
         isAuthenticated: false,
@@ -455,7 +515,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         ...(updates.bio !== undefined && { bio: updates.bio }),
       };
       
-      await SecureStore.setItemAsync('user_data', JSON.stringify(updatedProfile));
+      if (updatedProfile) {
+        await safeSecureStoreSet('user_data', JSON.stringify(updatedProfile));
+      }
       
       setAuthState(prev => ({
         ...prev,
@@ -491,7 +553,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           result.data.user, 
           result.data.user.role === 'stylist'
         );
-        await SecureStore.setItemAsync('user_data', JSON.stringify(userProfile));
+        if (userProfile) {
+          await safeSecureStoreSet('user_data', JSON.stringify(userProfile));
+        }
         
         setAuthState(prev => ({
           ...prev,

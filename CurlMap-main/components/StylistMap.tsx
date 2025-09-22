@@ -12,19 +12,19 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 
-// Conditional import for react-native-maps - only on native platforms
+// Conditional import for MapLibre - only on native platforms
 let MapView: any = null;
 let Marker: any = null;
 let Circle: any = null;
 
 if (Platform.OS !== 'web') {
   try {
-    const maps = require('react-native-maps');
-    MapView = maps.default || maps.MapView;
-    Marker = maps.Marker;
-    Circle = maps.Circle;
+    const maplibre = require('@maplibre/maplibre-react-native');
+    MapView = maplibre.MapView;
+    Marker = maplibre.PointAnnotation;
+    Circle = maplibre.CircleLayer;
   } catch (error) {
-    console.warn('react-native-maps not available:', error);
+    console.warn('MapLibre not available:', error);
   }
 }
 
@@ -44,7 +44,7 @@ import { LocationService } from '../utils/location';
 import { withTurboModuleErrorHandling } from '../utils/turboModuleCompat';
 import TurboModuleErrorBoundary from './TurboModuleErrorBoundary';
 
-// Define types locally to avoid importing from react-native-maps
+// Define types locally to avoid importing from MapLibre
 type Region = {
   latitude: number;
   longitude: number;
@@ -123,7 +123,7 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
 }) => {
   // Check if map components are available
   if (!MapView || !Marker || !Circle) {
-    console.warn('react-native-maps components not available');
+    console.warn('MapLibre components not available');
     return (
       <View style={styles.container}>
         <View style={styles.webMapPlaceholder}>
@@ -160,8 +160,13 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
   }, [userLocation, isMapReady]);
 
   const checkLocationPermission = async () => {
-    const { status } = await Location.getForegroundPermissionsAsync();
-    setLocationPermission(status === 'granted' ? 'granted' : 'denied');
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      setLocationPermission(status === 'granted' ? 'granted' : 'denied');
+    } catch (error) {
+      console.error('Error checking location permission:', error);
+      setLocationPermission('denied');
+    }
   };
 
   const requestLocationPermission = async () => {
@@ -186,6 +191,11 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
   const getCurrentLocation = async () => {
     try {
       const locationService = LocationService.getInstance();
+      if (!locationService) {
+        console.error('LocationService not available');
+        return;
+      }
+      
       const location = await locationService.getCurrentLocation();
       
       if (location && mapRef.current) {

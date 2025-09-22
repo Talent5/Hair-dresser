@@ -441,8 +441,8 @@ bookingSchema.methods.updateStatus = function(newStatus, updatedBy) {
   const validTransitions = {
     pending: ['accepted', 'rejected', 'confirmed', 'cancelled'],
     pending_approval: ['accepted', 'rejected', 'confirmed', 'cancelled'], // Stylist can approve or cancel
-    accepted: ['confirmed', 'in_progress', 'cancelled', 'no_show', 'stylist_no_show'],
-    confirmed: ['in_progress', 'cancelled', 'no_show', 'stylist_no_show'],
+    accepted: ['confirmed', 'in_progress', 'completed', 'cancelled', 'no_show', 'stylist_no_show'], // Added 'completed'
+    confirmed: ['in_progress', 'completed', 'cancelled', 'no_show', 'stylist_no_show'], // Added 'completed'
     in_progress: ['completed', 'cancelled'],
     completed: [], // Terminal state
     cancelled: [], // Terminal state

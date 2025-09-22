@@ -25,7 +25,17 @@ export interface Stylist {
   portfolio: PortfolioItem[];
   schedule: ScheduleItem[];
   basePrices: ServicePrice[];
-  rating: number;
+  rating: number | {
+    average: number;
+    count: number;
+    breakdown?: {
+      5: number;
+      4: number;
+      3: number;
+      2: number;
+      1: number;
+    };
+  };
   reviewCount: number;
   specialties: string[];
   bio: string;

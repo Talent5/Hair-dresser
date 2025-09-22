@@ -7,10 +7,34 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Platform,
 } from 'react-native';
-import MapView, { Marker, Circle, Region } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+
+// Conditional import for MapLibre
+let MapView: any = null;
+let Marker: any = null;
+let Circle: any = null;
+
+if (Platform.OS !== 'web') {
+  try {
+    const maplibre = require('@maplibre/maplibre-react-native');
+    MapView = maplibre.MapView;
+    Marker = maplibre.PointAnnotation;
+    Circle = maplibre.CircleLayer;
+  } catch (error) {
+    console.warn('MapLibre not available:', error);
+  }
+}
+
+// Define types locally to avoid importing from MapLibre
+type Region = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
 import { 
   LocationCoordinates, 
   StylistSearchResult,
@@ -49,7 +73,7 @@ const StylistMap: React.FC<StylistMapProps> = ({
   searchRadius = BOOKING_CONFIG.SEARCH_RADIUS_KM,
   onRegionChange,
 }) => {
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   const [region, setRegion] = useState<Region | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
@@ -164,7 +188,7 @@ const StylistMap: React.FC<StylistMapProps> = ({
               {stylist.user?.name}
             </Text>
             <Text style={styles.markerInfoSubText}>
-              ⭐ {stylist.rating.toFixed(1)} • {LocationService.formatDistance(stylist.distance)}
+              ⭐ {(typeof stylist.rating === 'number' ? stylist.rating : stylist.rating?.average || 0).toFixed(1)} • {LocationService.formatDistance(stylist.distance)}
             </Text>
           </View>
         )}

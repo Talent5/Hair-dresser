@@ -30,9 +30,10 @@ import {
   BOOKING_CONFIG,
 } from '@/constants';
 import Header from '@/components/Header';
-import StylistMap from '@/components/StylistMap';
+import ProductionSafeMap from '@/components/ProductionSafeMap';
 import StylistCard from '@/components/StylistCard';
 import SearchFiltersModal from '@/components/SearchFiltersModal';
+import SearchErrorBoundary from '@/components/SearchErrorBoundary';
 import { LocationService } from '@/utils/location';
 import { apiService } from '@/services/api';
 
@@ -299,16 +300,33 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ route }) => {
     </View>
   );
 
-  const renderMapView = () => (
-    <StylistMap
-      stylists={sortedStylists}
-      userLocation={userLocation}
-      onStylistSelect={handleStylistSelect}
-      selectedStylist={selectedStylist}
-      isLoading={isLoading}
-      searchRadius={filters.radius}
-    />
-  );
+  const renderMapView = () => {
+    try {
+      return (
+        <ProductionSafeMap
+          stylists={sortedStylists}
+          userLocation={userLocation}
+          onStylistSelect={handleStylistSelect}
+          selectedStylist={selectedStylist}
+          isLoading={isLoading}
+          searchRadius={filters.radius}
+        />
+      );
+    } catch (error) {
+      console.error('Map rendering error:', error);
+      // Fallback to list view if map fails
+      return (
+        <View style={styles.mapErrorContainer}>
+          <Ionicons name="map-outline" size={64} color={COLORS.GRAY_400} />
+          <Text style={styles.mapErrorTitle}>Map Unavailable</Text>
+          <Text style={styles.mapErrorText}>
+            Unable to load the map. Showing list view instead.
+          </Text>
+          {renderListView()}
+        </View>
+      );
+    }
+  };
 
   const renderListView = () => (
     <ScrollView
@@ -353,33 +371,35 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ route }) => {
   );
 
   return (
-    <View style={styles.container}>
-      <Header title="Find Stylists" />
-      {renderSearchHeader()}
-      
-      <View style={styles.content}>
-        {viewMode === 'map' ? renderMapView() : renderListView()}
-      </View>
-
-      {/* Search Filters Modal */}
-      <SearchFiltersModal
-        visible={showFilters}
-        filters={filters}
-        onApply={handleFiltersApply}
-        onClose={() => setShowFilters(false)}
-      />
-
-      {/* Results Summary */}
-      {!isLoading && (
-        <View style={styles.resultsSummary}>
-          <Text style={styles.resultsSummaryText}>
-            {sortedStylists.length} stylists found
-            {userLocation && filters.radius > 0 && ` within ${filters.radius}km`}
-            {userLocation && filters.radius === 0 && ` (all stylists)`}
-          </Text>
+    <SearchErrorBoundary fallbackMessage="There was an issue loading the stylist search. This might be due to location permissions or map functionality.">
+      <View style={styles.container}>
+        <Header title="Find Stylists" />
+        {renderSearchHeader()}
+        
+        <View style={styles.content}>
+          {viewMode === 'map' ? renderMapView() : renderListView()}
         </View>
-      )}
-    </View>
+
+        {/* Search Filters Modal */}
+        <SearchFiltersModal
+          visible={showFilters}
+          filters={filters}
+          onApply={handleFiltersApply}
+          onClose={() => setShowFilters(false)}
+        />
+
+        {/* Results Summary */}
+        {!isLoading && (
+          <View style={styles.resultsSummary}>
+            <Text style={styles.resultsSummaryText}>
+              {sortedStylists.length} stylists found
+              {userLocation && filters.radius > 0 && ` within ${filters.radius}km`}
+              {userLocation && filters.radius === 0 && ` (all stylists)`}
+            </Text>
+          </View>
+        )}
+      </View>
+    </SearchErrorBoundary>
   );
 };
 
@@ -507,6 +527,27 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.SM,
     color: COLORS.TEXT_SECONDARY,
     textAlign: 'center',
+  },
+  mapErrorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.XL,
+    backgroundColor: COLORS.BACKGROUND,
+  },
+  mapErrorTitle: {
+    fontSize: FONT_SIZES.LG,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_PRIMARY,
+    marginTop: SPACING.MD,
+    marginBottom: SPACING.SM,
+    textAlign: 'center',
+  },
+  mapErrorText: {
+    fontSize: FONT_SIZES.MD,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+    marginBottom: SPACING.LG,
   },
 });
 

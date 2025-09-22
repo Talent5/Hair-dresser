@@ -468,6 +468,58 @@ stylistSchema.methods.isTimeSlotAvailable = function(dayStart, dayEnd, requested
          requestedEndMinutes <= dayEndMinutes;
 };
 
+// Static method to update stylist ratings from Rating collection
+stylistSchema.statics.updateStylistRatings = async function(stylistProfileId) {
+  try {
+    const Rating = mongoose.model('Rating');
+    
+    // Calculate new rating statistics
+    const stats = await Rating.aggregate([
+      {
+        $match: {
+          stylistProfileId: new mongoose.Types.ObjectId(stylistProfileId),
+          status: 'approved'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalRatings: { $sum: 1 },
+          averageRating: { $avg: '$overallRating' },
+          ratingDistribution: { $push: '$overallRating' }
+        }
+      }
+    ]);
+
+    const stylist = await this.findById(stylistProfileId);
+    if (!stylist) return;
+
+    if (stats.length > 0) {
+      const stat = stats[0];
+      stylist.rating.average = Math.round(stat.averageRating * 10) / 10;
+      stylist.rating.count = stat.totalRatings;
+
+      // Update breakdown
+      stylist.rating.breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+      stat.ratingDistribution.forEach(rating => {
+        const roundedRating = Math.floor(rating);
+        if (stylist.rating.breakdown[roundedRating] !== undefined) {
+          stylist.rating.breakdown[roundedRating]++;
+        }
+      });
+    } else {
+      // No ratings
+      stylist.rating.average = 0;
+      stylist.rating.count = 0;
+      stylist.rating.breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    }
+
+    await stylist.save();
+  } catch (error) {
+    console.error('Error updating stylist ratings:', error);
+  }
+};
+
 // Static method to find stylists by service and location
 stylistSchema.statics.findByServiceAndLocation = function(service, longitude, latitude, maxDistance = 5000) {
   return this.aggregate([

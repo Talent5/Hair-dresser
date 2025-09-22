@@ -1,4 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { API_CONFIG, ERROR_MESSAGES } from '../constants';
 import { TokenService } from '../utils/storage';
 import { 
@@ -34,6 +36,8 @@ class ApiService {
       timeout: API_CONFIG.TIMEOUT,
       headers: {
         'Content-Type': 'application/json',
+        'x-platform': Platform.OS,
+        'x-app-version': Constants.expoConfig?.version || '1.0.0',
       },
     });
 
@@ -76,11 +80,14 @@ class ApiService {
             const refreshToken = await TokenService.getRefreshToken();
             if (refreshToken) {
               const response = await this.refreshToken(refreshToken);
-              const { token } = response.data;
+              const token = response.data?.token;
               
-              await TokenService.setToken(token);
-              
-              this.processQueue(null, token);
+              if (token) {
+                await TokenService.setToken(token);
+                this.processQueue(null, token);
+              } else {
+                throw new Error('No token in refresh response');
+              }
               
               originalRequest.headers.Authorization = `Bearer ${token}`;
               return this.client(originalRequest);
@@ -238,6 +245,17 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('Error fetching stylist profile:', error);
+      throw error;
+    }
+  }
+
+  // Get stylist profile by ID
+  async getStylistProfileById(stylistId: string): Promise<any> {
+    try {
+      const response = await this.client.get(`/stylists/${stylistId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching stylist profile by ID:', error);
       throw error;
     }
   }
@@ -628,6 +646,186 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('Error updating stylist payment settings:', error);
+      throw error;
+    }
+  }
+
+  // Ratings
+  async submitRating(ratingData: {
+    bookingId: string;
+    overallRating: number;
+    ratingBreakdown?: any;
+    review?: any;
+    wouldRecommend?: boolean;
+    wouldBookAgain?: boolean;
+    photos?: any[];
+  }): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.client.post('/ratings', ratingData);
+      return response.data;
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      throw error;
+    }
+  }
+
+  async getStylistRatings(
+    stylistId: string,
+    params?: {
+      page?: number;
+      limit?: number;
+      sort?: string;
+      minRating?: number;
+      service?: string;
+      verified?: boolean;
+    }
+  ): Promise<PaginatedResponse<any>> {
+    try {
+      const response = await this.client.get(`/ratings/stylist/${stylistId}`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching stylist ratings:', error);
+      throw error;
+    }
+  }
+
+  async getStylistRatingStats(stylistId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.client.get(`/ratings/stylist/${stylistId}/stats`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching stylist rating stats:', error);
+      throw error;
+    }
+  }
+
+  async getCustomerRatings(
+    customerId: string,
+    params?: {
+      page?: number;
+      limit?: number;
+    }
+  ): Promise<PaginatedResponse<any>> {
+    try {
+      const response = await this.client.get(`/ratings/customer/${customerId}`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching customer ratings:', error);
+      throw error;
+    }
+  }
+
+  async voteRatingHelpful(ratingId: string, isHelpful: boolean): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.client.post(`/ratings/${ratingId}/helpful`, { isHelpful });
+      return response.data;
+    } catch (error) {
+      console.error('Error voting on rating helpfulness:', error);
+      throw error;
+    }
+  }
+
+  async respondToRating(
+    ratingId: string,
+    responseData: {
+      message: string;
+      isPublic?: boolean;
+    }
+  ): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.client.post(`/ratings/${ratingId}/respond`, responseData);
+      return response.data;
+    } catch (error) {
+      console.error('Error responding to rating:', error);
+      throw error;
+    }
+  }
+
+  async updateRating(
+    ratingId: string,
+    updateData: {
+      overallRating?: number;
+      ratingBreakdown?: any;
+      review?: any;
+      wouldRecommend?: boolean;
+      wouldBookAgain?: boolean;
+      photos?: any[];
+    }
+  ): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.client.put(`/ratings/${ratingId}`, updateData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating rating:', error);
+      throw error;
+    }
+  }
+
+  async deleteRating(ratingId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.client.delete(`/ratings/${ratingId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting rating:', error);
+      throw error;
+    }
+  }
+
+  async getRecentRatings(params?: {
+    limit?: number;
+    service?: string;
+  }): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.client.get('/ratings/recent', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching recent ratings:', error);
+      throw error;
+    }
+  }
+
+  async checkBookingRatingStatus(bookingId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.client.get(`/bookings/${bookingId}/rating-status`);
+      return response.data;
+    } catch (error) {
+      console.error('Error checking booking rating status:', error);
+      throw error;
+    }
+  }
+
+  async getRatingById(ratingId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.client.get(`/ratings/${ratingId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching rating by ID:', error);
+      throw error;
+    }
+  }
+
+  // Admin: Get all ratings for moderation
+  async getAllRatingsForAdmin(): Promise<any[]> {
+    try {
+      const response = await this.client.get('/admin/ratings');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching all ratings for admin:', error);
+      throw error;
+    }
+  }
+
+  // Admin: Moderate a rating
+  async moderateRating(ratingId: string, moderation: {
+    action: 'approve' | 'reject' | 'flag';
+    reason: string;
+    moderatorId: string;
+  }): Promise<any> {
+    try {
+      const response = await this.client.post(`/admin/ratings/${ratingId}/moderate`, moderation);
+      return response.data;
+    } catch (error) {
+      console.error('Error moderating rating:', error);
       throw error;
     }
   }

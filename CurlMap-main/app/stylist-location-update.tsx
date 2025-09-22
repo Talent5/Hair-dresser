@@ -17,17 +17,17 @@ import { COLORS, FONT_SIZES, SPACING, BORDER_RADIUS } from '@/constants';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/services/api';
 
-// Conditional import for react-native-maps - only on native platforms
+// Conditional import for MapLibre - only on native platforms
 let MapView: any = null;
 let Marker: any = null;
 
 if (Platform.OS !== 'web') {
   try {
-    const maps = require('react-native-maps');
-    MapView = maps.default || maps.MapView;
-    Marker = maps.Marker;
+    const maplibre = require('@maplibre/maplibre-react-native');
+    MapView = maplibre.MapView;
+    Marker = maplibre.PointAnnotation;
   } catch (error) {
-    console.warn('react-native-maps not available:', error);
+    console.warn('MapLibre not available:', error);
   }
 }
 

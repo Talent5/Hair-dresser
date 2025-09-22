@@ -17,6 +17,7 @@ const chatRoutes = require('./routes/chat');
 const requestRoutes = require('./routes/requests');
 const favoriteRoutes = require('./routes/favorites');
 const adminRoutes = require('./routes/admin');
+const ratingRoutes = require('./routes/ratings');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -172,6 +173,7 @@ app.use('/api/chat', authMiddleware, chatRoutes);
 app.use('/api/requests', requestRoutes); // Auth handled per route
 app.use('/api/favorites', favoriteRoutes); // Auth handled per route
 app.use('/api/admin', adminRoutes); // Admin routes with built-in auth
+app.use('/api/ratings', ratingRoutes); // Rating routes with built-in auth
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

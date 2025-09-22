@@ -189,7 +189,7 @@ export default function BookingDetailScreen() {
           onPress: async () => {
             setActionLoading(true);
             try {
-              const reason = 'Stylist cancellation';
+              const reason = 'stylist_unavailable';
               await apiService.cancelBooking(booking!._id, reason);
               await fetchBookingDetails(); // Refresh booking data
               Alert.alert('Success', 'Booking cancelled');

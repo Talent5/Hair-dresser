@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { COLORS, FONT_SIZES, SPACING } from '@/constants';
 import Header from '@/components/Header';
+import RatingForm from '@/components/RatingForm';
 import { apiService } from '@/services/api';
 import OfflineBookingService from '@/services/OfflineBookingService';
 import NotificationService, { BookingNotification } from '@/services/NotificationService';
@@ -32,8 +33,13 @@ interface BookingItemProps {
 
 const BookingItem: React.FC<BookingItemProps> = ({ booking, onStatusUpdate, router }) => {
   const { user } = useAuth();
-  const isStylist = user?.role === 'stylist';
-  const isCustomer = user?.role === 'customer';
+  const isStylist = user?.isStylist || false;
+  const isCustomer = !user?.isStylist;
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingStatus, setRatingStatus] = useState<any>(null);
+  const [loadingRatingStatus, setLoadingRatingStatus] = useState(false);
+  const [existingRating, setExistingRating] = useState<any>(null);
+  const [isEditingRating, setIsEditingRating] = useState(false);
   
   const getStatusColor = (status: BookingStatus) => {
     switch (status) {
@@ -70,6 +76,73 @@ const BookingItem: React.FC<BookingItemProps> = ({ booking, onStatusUpdate, rout
       minute: '2-digit'
     });
   };
+
+  const checkRatingStatus = async () => {
+    console.log('🔍 Checking rating status for booking:', booking._id, 'Status:', booking.status, 'Is Customer:', isCustomer);
+    
+    if (booking.status !== 'completed' || !isCustomer) {
+      console.log('❌ Not checking rating status - booking not completed or user not customer');
+      return;
+    }
+    
+    setLoadingRatingStatus(true);
+    try {
+      console.log('📡 Making API call to check rating status...');
+      const response = await apiService.checkBookingRatingStatus(booking._id);
+      console.log('✅ Rating status response:', response.data);
+      setRatingStatus(response.data);
+      
+      // If rating exists, fetch full rating details
+      if (response.data?.hasRating && response.data?.ratingId) {
+        try {
+          const ratingResponse = await apiService.getRatingById(response.data.ratingId);
+          setExistingRating(ratingResponse.data);
+          console.log('✅ Existing rating details:', ratingResponse.data);
+        } catch (ratingError) {
+          console.error('❌ Error fetching existing rating:', ratingError);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error checking rating status:', error);
+    } finally {
+      setLoadingRatingStatus(false);
+    }
+  };
+
+  const handleRateService = () => {
+    setIsEditingRating(false);
+    setShowRatingModal(true);
+  };
+
+  const handleEditRating = () => {
+    setIsEditingRating(true);
+    setShowRatingModal(true);
+  };
+
+  const handleRatingSubmitted = async () => {
+    setShowRatingModal(false);
+    setIsEditingRating(false);
+    
+    // Clear existing rating data to force refresh
+    setExistingRating(null);
+    setRatingStatus(null);
+    
+    // Refresh rating status and data
+    await checkRatingStatus();
+    onStatusUpdate(); // Refresh bookings list
+    
+    Alert.alert(
+      isEditingRating ? 'Rating Updated! 🌟' : 'Rating Submitted! 🌟',
+      isEditingRating 
+        ? 'Your rating has been successfully updated.'
+        : 'Thank you for your feedback. Your rating helps other customers choose the best stylists.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  useEffect(() => {
+    checkRatingStatus();
+  }, [booking.status]);
 
   const handleAcceptBooking = () => {
     Alert.alert(
@@ -154,7 +227,7 @@ const BookingItem: React.FC<BookingItemProps> = ({ booking, onStatusUpdate, rout
           style: 'destructive',
           onPress: async () => {
             try {
-              const reason = isStylist ? 'Stylist cancellation' : 'Customer cancellation';
+              const reason = isStylist ? 'stylist_unavailable' : 'customer_request';
               await apiService.cancelBooking(booking._id, reason);
               onStatusUpdate();
               Alert.alert('Success', `${confirmText} successful`);
@@ -260,6 +333,58 @@ const BookingItem: React.FC<BookingItemProps> = ({ booking, onStatusUpdate, rout
       );
     }
 
+    // Rating section for completed bookings
+    if (booking.status === 'completed') {
+      if (loadingRatingStatus) {
+        // Show loading state
+        actions.push(
+          <View key="rating-loading" style={styles.ratingLoadingButton}>
+            <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+            <Text style={styles.ratingLoadingText}>Checking...</Text>
+          </View>
+        );
+      } else if (ratingStatus?.hasRating && existingRating) {
+        // Show existing rating with edit option
+        actions.push(
+          <View key="existing-rating" style={styles.existingRatingContainer}>
+            <View style={styles.ratingDisplay}>
+              <View style={styles.ratingStars}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Ionicons
+                    key={star}
+                    name={star <= existingRating.overallRating ? "star" : "star-outline"}
+                    size={16}
+                    color={star <= existingRating.overallRating ? COLORS.WARNING : COLORS.GRAY_400}
+                  />
+                ))}
+                <Text style={styles.ratingValue}>({existingRating.overallRating}/5)</Text>
+              </View>
+              {existingRating.review?.comment && (
+                <Text style={styles.ratingComment} numberOfLines={2}>
+                  "{existingRating.review.comment}"
+                </Text>
+              )}
+              <Text style={styles.ratingDate}>
+                Rated on {new Date(existingRating.createdAt).toLocaleDateString()}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.editRatingButton} onPress={handleEditRating}>
+              <Ionicons name="create-outline" size={16} color={COLORS.PRIMARY} />
+              <Text style={styles.editRatingText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      } else {
+        // Show rating button for bookings that can be rated
+        actions.push(
+          <TouchableOpacity key="rate" style={styles.rateButton} onPress={handleRateService}>
+            <Ionicons name="star-outline" size={16} color="#fff" />
+            <Text style={styles.rateButtonText}>Rate Service</Text>
+          </TouchableOpacity>
+        );
+      }
+    }
+
     return actions.length > 0 ? (
       <View style={styles.actionButtons}>
         {actions}
@@ -281,46 +406,79 @@ const BookingItem: React.FC<BookingItemProps> = ({ booking, onStatusUpdate, rout
   };
 
   return (
-    <View style={[
-      styles.bookingItem, 
-      booking.status === 'pending' && styles.pendingBookingItem
-    ]}>
-      <View style={styles.bookingHeader}>
-        <Text style={styles.serviceName} numberOfLines={1}>{booking.service.name}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
-          <Text style={styles.statusText} numberOfLines={1} ellipsizeMode="tail">{booking.status.toUpperCase()}</Text>
+    <>
+      <View style={[
+        styles.bookingItem, 
+        booking.status === 'pending' && styles.pendingBookingItem
+      ]}>
+        <View style={styles.bookingHeader}>
+          <Text style={styles.serviceName} numberOfLines={1}>{booking.service.name}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
+            <Text style={styles.statusText} numberOfLines={1} ellipsizeMode="tail">{booking.status.toUpperCase()}</Text>
+          </View>
         </View>
+
+        <Text style={styles.description}>{booking.service.description}</Text>
+
+        <View style={styles.bookingDetails}>
+          <View style={styles.detailRow}>
+            <Ionicons name="person-outline" size={16} color="#666" />
+            <Text style={styles.detailLabel}>{getDisplayRole()}:</Text>
+            <Text style={styles.detailText}>{getDisplayName()}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="calendar-outline" size={16} color="#666" />
+            <Text style={styles.detailText}>{formatDate(booking.appointmentTime)}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="time-outline" size={16} color="#666" />
+            <Text style={styles.detailText}>{booking.service.estimatedDuration} minutes</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="cash-outline" size={16} color="#666" />
+            <Text style={styles.detailText}>${booking.negotiatedPrice}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="location-outline" size={16} color="#666" />
+            <Text style={styles.detailText}>{LocationService.formatAddress(booking.location.address)}</Text>
+          </View>
+        </View>
+
+        {/* Render different actions based on user role */}
+        {isStylist ? renderStylistActions() : renderCustomerActions()}
       </View>
 
-      <Text style={styles.description}>{booking.service.description}</Text>
-
-      <View style={styles.bookingDetails}>
-        <View style={styles.detailRow}>
-          <Ionicons name="person-outline" size={16} color="#666" />
-          <Text style={styles.detailLabel}>{getDisplayRole()}:</Text>
-          <Text style={styles.detailText}>{getDisplayName()}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="calendar-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{formatDate(booking.appointmentTime)}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="time-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{booking.service.estimatedDuration} minutes</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="cash-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>${booking.negotiatedPrice}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="location-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{LocationService.formatAddress(booking.location.address)}</Text>
-        </View>
-      </View>
-
-      {/* Render different actions based on user role */}
-      {isStylist ? renderStylistActions() : renderCustomerActions()}
-    </View>
+      {/* Rating Modal */}
+      <RatingForm
+        visible={showRatingModal}
+        booking={{
+          _id: booking._id,
+          service: {
+            name: booking.service.name,
+            category: 'general'
+          },
+          stylist: {
+            _id: booking.stylistId || '',
+            name: booking.otherParty?.name || 'Stylist',
+            profileImage: undefined,
+            businessName: undefined
+          },
+          appointmentDateTime: booking.appointmentTime,
+          completedAt: new Date().toISOString(),
+          pricing: {
+            totalAmount: booking.negotiatedPrice || 0,
+            currency: 'USD'
+          }
+        }}
+        existingRating={isEditingRating ? existingRating : undefined}
+        isEditing={isEditingRating}
+        onSubmit={handleRatingSubmitted}
+        onClose={() => {
+          setShowRatingModal(false);
+          setIsEditingRating(false);
+        }}
+      />
+    </>
   );
 };
 
@@ -621,6 +779,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.SM,
   },
+  detailLabel: {
+    fontSize: FONT_SIZES.SM,
+    color: '#666',
+    fontWeight: '600',
+  },
   detailText: {
     fontSize: FONT_SIZES.SM,
     color: '#666',
@@ -690,6 +853,102 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: FONT_SIZES.SM,
     fontWeight: '600',
+  },
+  rateButton: {
+    backgroundColor: COLORS.WARNING,
+    padding: SPACING.SM,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  rateButtonText: {
+    color: 'white',
+    fontSize: FONT_SIZES.SM,
+    fontWeight: '600',
+    marginLeft: SPACING.XS,
+  },
+  ratedInfo: {
+    backgroundColor: COLORS.GRAY_100,
+    padding: SPACING.SM,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  ratedText: {
+    color: COLORS.WARNING,
+    fontSize: FONT_SIZES.SM,
+    fontWeight: '600',
+    marginLeft: SPACING.XS,
+  },
+  ratingLoadingButton: {
+    backgroundColor: COLORS.GRAY_300,
+    padding: SPACING.SM,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  ratingLoadingText: {
+    color: COLORS.GRAY_600,
+    fontSize: FONT_SIZES.SM,
+    fontWeight: '600',
+    marginLeft: SPACING.XS,
+  },
+  existingRatingContainer: {
+    backgroundColor: COLORS.SUCCESS + '10',
+    borderRadius: 8,
+    padding: SPACING.SM,
+    borderWidth: 1,
+    borderColor: COLORS.SUCCESS + '30',
+    flex: 1,
+  },
+  ratingDisplay: {
+    marginBottom: SPACING.SM,
+  },
+  ratingStars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginBottom: SPACING.XS,
+  },
+  ratingValue: {
+    fontSize: FONT_SIZES.SM,
+    fontWeight: '600',
+    color: COLORS.WARNING,
+    marginLeft: SPACING.XS,
+  },
+  ratingComment: {
+    fontSize: FONT_SIZES.SM,
+    color: COLORS.GRAY_700,
+    fontStyle: 'italic',
+    marginBottom: SPACING.XS,
+    lineHeight: 18,
+  },
+  ratingDate: {
+    fontSize: FONT_SIZES.XS,
+    color: COLORS.GRAY_500,
+  },
+  editRatingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.WHITE,
+    borderWidth: 1,
+    borderColor: COLORS.PRIMARY,
+    borderRadius: 6,
+    paddingVertical: SPACING.XS,
+    paddingHorizontal: SPACING.SM,
+  },
+  editRatingText: {
+    color: COLORS.PRIMARY,
+    fontSize: FONT_SIZES.SM,
+    fontWeight: '600',
+    marginLeft: SPACING.XS,
   },
   filterContainer: {
     flexDirection: 'row',

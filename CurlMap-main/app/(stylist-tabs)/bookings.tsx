@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { COLORS, FONT_SIZES, SPACING } from '@/constants';
 import Header from '@/components/Header';
+import RatingDisplay from '@/components/RatingDisplay';
 import { apiService } from '@/services/api';
 import OfflineBookingService from '@/services/OfflineBookingService';
 import NotificationService, { BookingNotification } from '@/services/NotificationService';
@@ -34,6 +35,8 @@ const BookingItem: React.FC<BookingItemProps> = ({ booking, onStatusUpdate, rout
   const { user } = useAuth();
   const isStylist = user?.isStylist || false;
   const isCustomer = !user?.isStylist;
+  const [bookingRating, setBookingRating] = useState<any>(null);
+  const [loadingRating, setLoadingRating] = useState(false);
   
   const getStatusColor = (status: BookingStatus) => {
     switch (status) {
@@ -70,6 +73,26 @@ const BookingItem: React.FC<BookingItemProps> = ({ booking, onStatusUpdate, rout
       minute: '2-digit'
     });
   };
+
+  const fetchBookingRating = async () => {
+    if (booking.status !== 'completed' || !isStylist) return;
+    
+    setLoadingRating(true);
+    try {
+      const response = await apiService.checkBookingRatingStatus(booking._id);
+      if (response.data && response.data.hasRating) {
+        setBookingRating(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching booking rating:', error);
+    } finally {
+      setLoadingRating(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookingRating();
+  }, [booking.status]);
 
   // Determine which party name to show
   const getDisplayName = () => {
@@ -109,31 +132,69 @@ const BookingItem: React.FC<BookingItemProps> = ({ booking, onStatusUpdate, rout
 
       <Text style={styles.description}>{booking.service.description}</Text>
 
-      <View style={styles.bookingDetails}>
-        <View style={styles.detailRow}>
-          <Ionicons name="person-outline" size={16} color="#666" />
-          <Text style={styles.detailLabel}>{getDisplayRole()}:</Text>
-          <Text style={styles.detailText}>{getDisplayName()}</Text>
+        <View style={styles.bookingDetails}>
+          <View style={styles.detailRow}>
+            <Ionicons name="person-outline" size={16} color="#666" />
+            <Text style={styles.detailLabel}>{getDisplayRole()}:</Text>
+            <Text style={styles.detailText}>{getDisplayName()}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="calendar-outline" size={16} color="#666" />
+            <Text style={styles.detailText}>{formatDate(booking.appointmentTime)}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="time-outline" size={16} color="#666" />
+            <Text style={styles.detailText}>{booking.service.estimatedDuration} minutes</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="cash-outline" size={16} color="#666" />
+            <Text style={styles.detailText}>${booking.negotiatedPrice}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="location-outline" size={16} color="#666" />
+            <Text style={styles.detailText}>{LocationService.formatAddress(booking.location.address)}</Text>
+          </View>
         </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="calendar-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{formatDate(booking.appointmentTime)}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="time-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{booking.service.estimatedDuration} minutes</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="cash-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>${booking.negotiatedPrice}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="location-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{LocationService.formatAddress(booking.location.address)}</Text>
-        </View>
-      </View>
 
-      <View style={styles.tapToViewContainer}>
+        {/* Rating Section for Completed Bookings */}
+        {booking.status === 'completed' && (
+          <View style={styles.ratingSection}>
+            {loadingRating ? (
+              <View style={styles.ratingLoading}>
+                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+                <Text style={styles.ratingLoadingText}>Checking for rating...</Text>
+              </View>
+            ) : bookingRating ? (
+              <View style={styles.ratingInfo}>
+                <View style={styles.ratingHeader}>
+                  <Ionicons name="star" size={20} color={COLORS.WARNING} />
+                  <Text style={styles.ratingTitle}>Customer Rating</Text>
+                </View>
+                <View style={styles.ratingDetails}>
+                  <View style={styles.ratingStars}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Ionicons
+                        key={star}
+                        name={star <= bookingRating.rating ? "star" : "star-outline"}
+                        size={16}
+                        color={star <= bookingRating.rating ? COLORS.WARNING : COLORS.GRAY_400}
+                      />
+                    ))}
+                    <Text style={styles.ratingValue}>({bookingRating.rating}/5)</Text>
+                  </View>
+                  <Text style={styles.ratingDate}>
+                    Rated on {new Date(bookingRating.ratedAt).toLocaleDateString()}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.noRatingInfo}>
+                <Ionicons name="star-outline" size={16} color={COLORS.GRAY_400} />
+                <Text style={styles.noRatingText}>Not rated yet</Text>
+              </View>
+            )}
+          </View>
+        )}      <View style={styles.tapToViewContainer}>
         <Ionicons name="chevron-forward-outline" size={20} color={COLORS.PRIMARY} />
         <Text style={styles.tapToViewText}>Tap to view details</Text>
       </View>
@@ -594,6 +655,70 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.SM,
     color: COLORS.PRIMARY,
     fontWeight: '500',
+    marginLeft: SPACING.XS,
+  },
+  ratingSection: {
+    marginTop: SPACING.MD,
+    paddingTop: SPACING.MD,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.GRAY_200,
+  },
+  ratingLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.SM,
+  },
+  ratingLoadingText: {
+    marginLeft: SPACING.SM,
+    fontSize: FONT_SIZES.SM,
+    color: COLORS.GRAY_600,
+  },
+  ratingInfo: {
+    backgroundColor: COLORS.SUCCESS + '10',
+    borderRadius: 8,
+    padding: SPACING.SM,
+  },
+  ratingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.XS,
+  },
+  ratingTitle: {
+    fontSize: FONT_SIZES.SM,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginLeft: SPACING.XS,
+  },
+  ratingDetails: {
+    gap: SPACING.XS,
+  },
+  ratingStars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  ratingValue: {
+    fontSize: FONT_SIZES.SM,
+    fontWeight: '600',
+    color: COLORS.WARNING,
+    marginLeft: SPACING.XS,
+  },
+  ratingDate: {
+    fontSize: FONT_SIZES.XS,
+    color: COLORS.GRAY_600,
+  },
+  noRatingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.SM,
+    backgroundColor: COLORS.GRAY_100,
+    borderRadius: 8,
+  },
+  noRatingText: {
+    fontSize: FONT_SIZES.SM,
+    color: COLORS.GRAY_600,
     marginLeft: SPACING.XS,
   },
 });

@@ -7,6 +7,10 @@ export class StorageService {
   // For sensitive data (tokens, passwords)
   static async setSecureItem(key: string, value: string): Promise<void> {
     try {
+      if (!value || typeof value !== 'string') {
+        throw new Error(`Invalid value for SecureStore key "${key}": value must be a non-empty string`);
+      }
+      
       if (Platform.OS === 'web') {
         // Fallback to AsyncStorage on web
         await AsyncStorage.setItem(`secure_${key}`, value);
@@ -160,7 +164,7 @@ export class SettingsService {
       locationSharing: true,
       darkMode: false,
       language: 'en',
-      ...settings,
+      ...(settings || {}),
     };
   }
 

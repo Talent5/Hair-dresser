@@ -674,4 +674,289 @@ router.patch('/bookings/:id/status', async (req, res) => {
   }
 });
 
+// =======================
+// RATING MANAGEMENT ROUTES
+// =======================
+
+// Get all ratings for admin dashboard
+router.get('/ratings', adminMiddleware, async (req, res) => {
+  try {
+    const Rating = require('../models/Rating');
+    
+    const { 
+      page = 1, 
+      limit = 20, 
+      filter = 'all',
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    let query = {};
+    
+    // Apply filters
+    switch (filter) {
+      case 'flagged':
+        query.isFlagged = true;
+        break;
+      case 'pending':
+        query.moderationStatus = 'pending';
+        break;
+      case 'reported':
+        query.reportCount = { $gt: 0 };
+        break;
+      case 'approved':
+        query.moderationStatus = 'approved';
+        break;
+      case 'rejected':
+        query.moderationStatus = 'rejected';
+        break;
+    }
+
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const ratings = await Rating.find(query)
+      .populate('bookingId', 'service totalAmount')
+      .populate('userId', 'name email avatar')
+      .populate('stylistId', 'userId')
+      .populate({
+        path: 'stylistId',
+        populate: {
+          path: 'userId',
+          select: 'name email'
+        }
+      })
+      .sort(sort)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .lean();
+
+    const total = await Rating.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: {
+        ratings,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching admin ratings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching ratings',
+      error: error.message
+    });
+  }
+});
+
+// Get rating statistics for admin dashboard
+router.get('/ratings/stats', adminMiddleware, async (req, res) => {
+  try {
+    const Rating = require('../models/Rating');
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thisWeekStart = new Date(today.getTime() - (today.getDay() * 24 * 60 * 60 * 1000));
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Get basic counts
+    const [
+      totalRatings,
+      flaggedRatings,
+      pendingModeration,
+      averageRatingResult,
+      todayRatings,
+      thisWeekRatings,
+      thisMonthRatings
+    ] = await Promise.all([
+      Rating.countDocuments(),
+      Rating.countDocuments({ isFlagged: true }),
+      Rating.countDocuments({ moderationStatus: 'pending' }),
+      Rating.aggregate([
+        { $group: { _id: null, avgRating: { $avg: '$overallRating' } } }
+      ]),
+      Rating.countDocuments({ createdAt: { $gte: today } }),
+      Rating.countDocuments({ createdAt: { $gte: thisWeekStart } }),
+      Rating.countDocuments({ createdAt: { $gte: thisMonthStart } })
+    ]);
+
+    // Get rating distribution
+    const ratingDistribution = await Rating.aggregate([
+      {
+        $group: {
+          _id: '$overallRating',
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: -1 } }
+    ]);
+
+    // Get top rated stylists
+    const topRatedStylists = await Rating.aggregate([
+      {
+        $group: {
+          _id: '$stylistId',
+          averageRating: { $avg: '$overallRating' },
+          totalRatings: { $sum: 1 }
+        }
+      },
+      { $match: { totalRatings: { $gte: 5 } } }, // Minimum 5 ratings
+      { $sort: { averageRating: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: 'stylists',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'stylist'
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'stylist.userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $project: {
+          stylistId: '$_id',
+          averageRating: 1,
+          totalRatings: 1,
+          stylistName: { $arrayElemAt: ['$user.name', 0] }
+        }
+      }
+    ]);
+
+    const averageRating = averageRatingResult.length > 0 ? 
+      averageRatingResult[0].avgRating : 0;
+
+    const distributionMap = {};
+    ratingDistribution.forEach(item => {
+      distributionMap[item._id] = item.count;
+    });
+
+    const breakdown = {
+      5: distributionMap[5] || 0,
+      4: distributionMap[4] || 0,
+      3: distributionMap[3] || 0,
+      2: distributionMap[2] || 0,
+      1: distributionMap[1] || 0
+    };
+
+    res.json({
+      success: true,
+      data: {
+        totalRatings,
+        averageRating: Math.round(averageRating * 10) / 10,
+        flaggedRatings,
+        pendingModeration,
+        ratingsByPeriod: {
+          today: todayRatings,
+          thisWeek: thisWeekRatings,
+          thisMonth: thisMonthRatings
+        },
+        ratingBreakdown: breakdown,
+        topRatedStylists,
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching rating stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching rating statistics',
+      error: error.message
+    });
+  }
+});
+
+// Moderate a rating
+router.post('/ratings/:ratingId/moderate', adminMiddleware, async (req, res) => {
+  try {
+    const Rating = require('../models/Rating');
+    const { ratingId } = req.params;
+    const { action, reason } = req.body;
+
+    if (!['approve', 'reject', 'flag'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid moderation action'
+      });
+    }
+
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Moderation reason is required'
+      });
+    }
+
+    const rating = await Rating.findById(ratingId);
+    if (!rating) {
+      return res.status(404).json({
+        success: false,
+        message: 'Rating not found'
+      });
+    }
+
+    // Update rating based on action
+    const updateData = {
+      moderationHistory: [
+        ...(rating.moderationHistory || []),
+        {
+          action,
+          reason,
+          moderatorId: req.user.id,
+          timestamp: new Date()
+        }
+      ]
+    };
+
+    switch (action) {
+      case 'approve':
+        updateData.moderationStatus = 'approved';
+        updateData.isFlagged = false;
+        break;
+      case 'reject':
+        updateData.moderationStatus = 'rejected';
+        updateData.isVisible = false;
+        break;
+      case 'flag':
+        updateData.isFlagged = true;
+        updateData.moderationStatus = 'pending';
+        break;
+    }
+
+    const updatedRating = await Rating.findByIdAndUpdate(
+      ratingId,
+      updateData,
+      { new: true }
+    ).populate('userId', 'name email')
+     .populate('stylistId');
+
+    // Log admin action
+    console.log(`Admin ${req.user.id} ${action}ed rating ${ratingId}: ${reason}`);
+
+    res.json({
+      success: true,
+      message: `Rating ${action}ed successfully`,
+      data: updatedRating
+    });
+  } catch (error) {
+    console.error('Error moderating rating:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error moderating rating',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

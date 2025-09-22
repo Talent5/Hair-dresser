@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { StylistSearchResult } from '../types';
 import {
   COLORS,
@@ -38,6 +39,7 @@ const StylistCard: React.FC<StylistCardProps> = ({
   onFavoriteToggle,
 }) => {
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const router = useRouter();
 
   const handleFavoriteToggle = async (e: any) => {
     e.stopPropagation(); // Prevent card press when tapping favorite
@@ -60,6 +62,11 @@ const StylistCard: React.FC<StylistCardProps> = ({
     } finally {
       setFavoriteLoading(false);
     }
+  };
+
+  const handleViewRatings = (e: any) => {
+    e.stopPropagation();
+    router.push(`/stylist-ratings?stylistId=${stylist._id}`);
   };
   const formatDistance = (distance: number): string => {
     if (distance < 1) {
@@ -119,7 +126,7 @@ const StylistCard: React.FC<StylistCardProps> = ({
             {stylist.user?.name || 'Unknown Stylist'}
           </Text>
           
-          <View style={styles.ratingContainer}>
+          <TouchableOpacity style={styles.ratingContainer} onPress={handleViewRatings}>
             <Ionicons name="star" size={16} color={COLORS.WARNING} />
             <Text style={styles.rating}>
               {(() => {
@@ -139,7 +146,8 @@ const StylistCard: React.FC<StylistCardProps> = ({
                 return stylist.reviewCount || 0;
               })()} reviews)
             </Text>
-          </View>
+            <Ionicons name="chevron-forward" size={14} color={COLORS.GRAY_400} style={styles.chevron} />
+          </TouchableOpacity>
 
           {showDistance && (
             <View style={styles.distanceContainer}>
@@ -285,6 +293,9 @@ const styles = StyleSheet.create({
   reviewCount: {
     fontSize: FONT_SIZES.SM,
     color: COLORS.TEXT_SECONDARY,
+    marginLeft: SPACING.XS,
+  },
+  chevron: {
     marginLeft: SPACING.XS,
   },
   distanceContainer: {

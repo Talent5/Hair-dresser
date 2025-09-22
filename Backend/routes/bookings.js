@@ -444,7 +444,7 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
   try {
     const bookingId = req.params.id;
     const userId = req.user.id;
-    const { status, reason, notes } = req.body;
+    const { status, reason, notes, actualDuration, completionNotes } = req.body;
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
@@ -465,7 +465,7 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
       });
     }
 
-    // Update status using the model method
+    // Handle specific status updates
     if (status === 'cancelled') {
       booking.cancellation.reason = reason;
       booking.cancellation.explanation = notes;
@@ -478,12 +478,56 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
       booking.cancellation.cancelledAt = new Date();
     }
 
+    // Handle completion
+    if (status === 'completed') {
+      booking.completion.completedAt = new Date();
+      if (actualDuration) {
+        booking.completion.actualDuration = actualDuration;
+      }
+      if (completionNotes) {
+        booking.completion.notes = completionNotes;
+      }
+    }
+
     await booking.updateStatus(status, userId);
+
+    // If booking is completed, send rating request notification
+    if (status === 'completed') {
+      try {
+        // Get socket.io instance from app
+        const io = req.app.get('io');
+        
+        // Send real-time notification to customer about rating request
+        const customerSocketRooms = [`user_${booking.customerId}`];
+        customerSocketRooms.forEach(room => {
+          io.to(room).emit('ratingRequest', {
+            bookingId: booking._id,
+            stylistName: booking.stylistId.name,
+            serviceName: booking.service.name,
+            message: 'Please rate your recent service experience',
+            timestamp: new Date()
+          });
+        });
+        
+        console.log(`Rating request notification sent for booking ${booking._id}`);
+      } catch (notificationError) {
+        console.error('Error sending rating notification:', notificationError);
+        // Don't fail the booking completion if notification fails
+      }
+    }
+
+    // Populate the booking for response
+    const populatedBooking = await Booking.findById(booking._id)
+      .populate('customerId', 'name email phone')
+      .populate('stylistId', 'name email phone')
+      .populate('stylistProfileId', 'businessName specialties rating');
 
     res.json({
       success: true,
-      data: booking,
-      message: 'Booking status updated successfully'
+      data: populatedBooking,
+      message: status === 'completed' 
+        ? 'Booking completed successfully. Rating request sent to customer.' 
+        : 'Booking status updated successfully'
     });
   } catch (error) {
     console.error('Error updating booking status:', error);
@@ -596,6 +640,104 @@ router.post('/:id/cancel', authMiddleware, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error while cancelling booking'
+    });
+  }
+});
+
+// @route   GET /api/bookings/:id/rating-status
+// @desc    Check if booking can be rated and get rating info
+// @access  Private (Customer only)
+router.get('/:id/rating-status', authMiddleware, async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const userId = req.user.id;
+
+    // Check if user is a customer
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only customers can check rating status'
+      });
+    }
+
+    const booking = await Booking.findById(bookingId)
+      .populate('stylistId', 'name profileImage')
+      .populate('stylistProfileId', 'businessName');
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    // Check if booking belongs to the customer
+    if (booking.customerId.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only check rating status for your own bookings'
+      });
+    }
+
+    // Check if booking is completed
+    if (booking.status !== 'completed') {
+      return res.json({
+        success: true,
+        data: {
+          canRate: false,
+          reason: 'Booking must be completed before rating',
+          bookingStatus: booking.status
+        }
+      });
+    }
+
+    // Check if already rated
+    const Rating = require('../models/Rating');
+    const existingRating = await Rating.findOne({ bookingId });
+
+    if (existingRating) {
+      return res.json({
+        success: true,
+        data: {
+          canRate: false,
+          reason: 'Booking already rated',
+          hasRating: true,
+          ratingId: existingRating._id,
+          rating: existingRating.overallRating,
+          ratedAt: existingRating.createdAt
+        }
+      });
+    }
+
+    // Can rate
+    res.json({
+      success: true,
+      data: {
+        canRate: true,
+        booking: {
+          _id: booking._id,
+          service: booking.service,
+          appointmentDateTime: booking.appointmentDateTime,
+          completedAt: booking.completion.completedAt,
+          stylist: {
+            _id: booking.stylistId._id,
+            name: booking.stylistId.name,
+            profileImage: booking.stylistId.profileImage,
+            businessName: booking.stylistProfileId?.businessName
+          },
+          pricing: {
+            totalAmount: booking.pricing.totalAmount,
+            currency: booking.pricing.currency
+          }
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error checking rating status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while checking rating status'
     });
   }
 });

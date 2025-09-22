@@ -7,7 +7,7 @@ export default {
     "icon": "./assets/images/icon.png",
     "scheme": "curlmap",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+        "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",

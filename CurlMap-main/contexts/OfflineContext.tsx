@@ -155,7 +155,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({ children }) =>
         await apiService.updateBookingStatus(action.bookingId, 'completed');
         break;
       case 'cancel':
-        await apiService.cancelBooking(action.bookingId, action.data?.reason || 'Cancelled');
+        await apiService.cancelBooking(action.bookingId, action.data?.reason || 'other');
         break;
       default:
         throw new Error(`Unknown action type: ${action.type}`);
