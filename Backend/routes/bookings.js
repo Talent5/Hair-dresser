@@ -470,6 +470,13 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
       booking.cancellation.reason = reason;
       booking.cancellation.explanation = notes;
     }
+    
+    if (status === 'rejected') {
+      booking.cancellation.reason = reason || 'stylist_unavailable';
+      booking.cancellation.explanation = notes || 'Booking rejected by stylist';
+      booking.cancellation.cancelledBy = userId;
+      booking.cancellation.cancelledAt = new Date();
+    }
 
     await booking.updateStatus(status, userId);
 
@@ -483,6 +490,59 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Server error while updating booking status'
+    });
+  }
+});
+
+// @route   PATCH /api/bookings/:id/cancel
+// @desc    Cancel a booking (alternative endpoint)
+// @access  Private
+router.patch('/:id/cancel', authMiddleware, async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const userId = req.user.id;
+    const { reason, explanation } = req.body;
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    // Check if user can cancel
+    const cancellationCheck = booking.canBeCancelled(userId);
+    if (!cancellationCheck.canCancel) {
+      return res.status(400).json({
+        success: false,
+        message: cancellationCheck.reason
+      });
+    }
+
+    // Set cancellation details
+    booking.cancellation.reason = reason;
+    booking.cancellation.explanation = explanation;
+
+    // Update to cancelled status
+    await booking.updateStatus('cancelled', userId);
+
+    res.json({
+      success: true,
+      data: {
+        booking,
+        refundInfo: {
+          refundPercentage: cancellationCheck.refundPercentage,
+          withPenalty: cancellationCheck.withPenalty
+        }
+      },
+      message: 'Booking cancelled successfully'
+    });
+  } catch (error) {
+    console.error('Error cancelling booking:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while cancelling booking'
     });
   }
 });

@@ -140,6 +140,7 @@ const bookingSchema = new mongoose.Schema({
     enum: [
       'pending',        // Waiting for stylist confirmation
       'pending_approval', // Customer offered lower price, awaiting stylist approval
+      'accepted',       // Stylist has accepted the booking
       'confirmed',      // Both parties agreed
       'in_progress',    // Service is happening
       'completed',      // Service finished successfully
@@ -404,8 +405,8 @@ bookingSchema.methods.canBeCancelled = function(userId) {
   const appointment = new Date(this.appointmentDateTime);
   const hoursUntilAppointment = (appointment - now) / (1000 * 60 * 60);
   
-  // Can't cancel if already completed, in progress, or cancelled
-  if (['completed', 'in_progress', 'cancelled', 'no_show', 'stylist_no_show'].includes(this.status)) {
+  // Can't cancel if already completed, in progress, cancelled, or rejected
+  if (['completed', 'in_progress', 'cancelled', 'rejected', 'no_show', 'stylist_no_show'].includes(this.status)) {
     return { canCancel: false, reason: 'Booking cannot be cancelled in current status' };
   }
   
@@ -438,12 +439,14 @@ bookingSchema.methods.canBeCancelled = function(userId) {
 // Method to update booking status with validation
 bookingSchema.methods.updateStatus = function(newStatus, updatedBy) {
   const validTransitions = {
-    pending: ['confirmed', 'cancelled'],
-    pending_approval: ['confirmed', 'cancelled'], // Stylist can approve or cancel
+    pending: ['accepted', 'rejected', 'confirmed', 'cancelled'],
+    pending_approval: ['accepted', 'rejected', 'confirmed', 'cancelled'], // Stylist can approve or cancel
+    accepted: ['confirmed', 'in_progress', 'cancelled', 'no_show', 'stylist_no_show'],
     confirmed: ['in_progress', 'cancelled', 'no_show', 'stylist_no_show'],
     in_progress: ['completed', 'cancelled'],
     completed: [], // Terminal state
     cancelled: [], // Terminal state
+    rejected: [], // Terminal state
     no_show: [], // Terminal state
     stylist_no_show: [] // Terminal state
   };
@@ -476,7 +479,7 @@ bookingSchema.statics.findUpcomingForReminders = function() {
   const in30Minutes = new Date(now.getTime() + 30 * 60 * 1000);
   
   return this.find({
-    status: { $in: ['confirmed', 'pending'] },
+    status: { $in: ['confirmed', 'accepted', 'pending'] },
     appointmentDateTime: {
       $gte: now,
       $lte: in24Hours
