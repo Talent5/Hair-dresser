@@ -108,7 +108,7 @@ app.options('*', (req, res) => {
   res.sendStatus(200);
 });
 
-// MongoDB connection
+// MongoDB connection with enhanced resilience
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/curlmap', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -118,6 +118,9 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/curlmap',
   maxPoolSize: 10, // Maintain up to 10 socket connections
   minPoolSize: 5, // Maintain a minimum of 5 socket connections
   maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
+  heartbeatFrequencyMS: 10000, // Check connection every 10 seconds
+  retryWrites: true,
+  retryReads: true,
 })
 .then(() => {
   console.log('Connected to MongoDB');
@@ -137,6 +140,19 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/curlmap',
 .catch((error) => {
   console.error('MongoDB connection error:', error);
   process.exit(1); // Exit process if can't connect to database
+});
+
+// MongoDB connection event handlers for better monitoring
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected. Attempting to reconnect...');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('MongoDB reconnected successfully');
+});
+
+mongoose.connection.on('error', (error) => {
+  console.error('MongoDB connection error:', error);
 });
 
 // Socket.IO authentication and chat handling
@@ -219,6 +235,27 @@ server.listen(PORT, HOST, () => {
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Network accessible at: http://192.168.0.49:${PORT}`);
   console.log(`Server timeouts configured: keepAlive=${server.keepAliveTimeout}ms, headers=${server.headersTimeout}ms`);
+  
+  // Keep-alive mechanism to prevent service from sleeping (production only)
+  if (process.env.NODE_ENV === 'production') {
+    const keepAliveInterval = setInterval(() => {
+      // Self-ping every 14 minutes to keep service awake
+      const https = require('https');
+      const url = process.env.RENDER_EXTERNAL_URL || `https://hair-dresser-adkn.onrender.com`;
+      
+      https.get(`${url}/health`, (res) => {
+        console.log(`Keep-alive ping: ${res.statusCode}`);
+      }).on('error', (err) => {
+        console.log('Keep-alive ping failed:', err.message);
+      });
+    }, 14 * 60 * 1000); // 14 minutes
+    
+    // Clear interval on shutdown
+    process.on('SIGTERM', () => clearInterval(keepAliveInterval));
+    process.on('SIGINT', () => clearInterval(keepAliveInterval));
+    
+    console.log('Keep-alive mechanism activated for production');
+  }
 });
 
 // Graceful shutdown handling
