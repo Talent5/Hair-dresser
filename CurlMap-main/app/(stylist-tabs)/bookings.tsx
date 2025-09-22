@@ -48,6 +48,19 @@ const BookingItem: React.FC<BookingItemProps> = ({ booking, onStatusUpdate, rout
     }
   };
 
+  const getStatusAbbreviation = (status: BookingStatus) => {
+    switch (status) {
+      case 'pending': return 'PENDING';
+      case 'accepted': return 'ACCEPT';
+      case 'confirmed': return 'CONFIRM';
+      case 'in_progress': return 'ACTIVE';
+      case 'completed': return 'DONE';
+      case 'cancelled': return 'CANCEL';
+      case 'rejected': return 'REJECT';
+      default: return status.toUpperCase();
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -88,9 +101,9 @@ const BookingItem: React.FC<BookingItemProps> = ({ booking, onStatusUpdate, rout
       activeOpacity={0.7}
     >
       <View style={styles.bookingHeader}>
-        <Text style={styles.serviceName}>{booking.service.name}</Text>
+        <Text style={styles.serviceName} numberOfLines={1}>{booking.service.name}</Text>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
-          <Text style={styles.statusText}>{booking.status.toUpperCase()}</Text>
+          <Text style={styles.statusText} numberOfLines={1} ellipsizeMode="tail">{booking.status.toUpperCase()}</Text>
         </View>
       </View>
 
@@ -443,16 +456,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     flex: 1,
+    marginRight: 12,
   },
   statusBadge: {
-    paddingHorizontal: SPACING.SM,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    minWidth: 75,
+    maxWidth: 75,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   statusText: {
-    fontSize: FONT_SIZES.XS,
+    fontSize: 10,
     fontWeight: 'bold',
     color: 'white',
+    textAlign: 'center',
   },
   description: {
     fontSize: FONT_SIZES.SM,

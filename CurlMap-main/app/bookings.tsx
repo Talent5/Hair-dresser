@@ -118,6 +118,16 @@ export default function BookingsScreen() {
     }
   };
 
+  const getStatusAbbreviation = (status: string) => {
+    switch (status) {
+      case 'pending': return 'PENDING';
+      case 'confirmed': return 'CONFIRM';
+      case 'completed': return 'DONE';
+      case 'cancelled': return 'CANCEL';
+      default: return status.toUpperCase();
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -161,7 +171,7 @@ export default function BookingsScreen() {
           <Text style={styles.bookingTime}>{booking.time}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
-          <Text style={styles.statusText}>{booking.status.toUpperCase()}</Text>
+          <Text style={styles.statusText} numberOfLines={1} ellipsizeMode="tail">{booking.status.toUpperCase()}</Text>
         </View>
       </View>
 
@@ -351,14 +361,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    minWidth: 85,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statusText: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   servicesContainer: {
     marginBottom: 12,
