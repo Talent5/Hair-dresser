@@ -277,7 +277,7 @@ export default function BookingDetailScreen() {
           <Ionicons name="time-outline" size={20} color={COLORS.GRAY_500} />
           <View style={styles.detailContent}>
             <Text style={styles.detailLabel}>Duration</Text>
-            <Text style={styles.detailValue}>{booking?.service?.estimatedDuration || booking?.service?.duration || 0} minutes</Text>
+            <Text style={styles.detailValue}>{booking?.service?.estimatedDuration || 0} minutes</Text>
           </View>
         </View>
         
@@ -285,7 +285,7 @@ export default function BookingDetailScreen() {
           <Ionicons name="cash-outline" size={20} color={COLORS.GRAY_500} />
           <View style={styles.detailContent}>
             <Text style={styles.detailLabel}>Price</Text>
-            <Text style={styles.detailValue}>${booking?.negotiatedPrice || booking?.pricing?.totalAmount || 0}</Text>
+            <Text style={styles.detailValue}>${booking?.negotiatedPrice || 0}</Text>
           </View>
         </View>
         
@@ -310,7 +310,7 @@ export default function BookingDetailScreen() {
           <Ionicons name="calendar-outline" size={20} color={COLORS.GRAY_500} />
           <View style={styles.detailContent}>
             <Text style={styles.detailLabel}>Date & Time</Text>
-            <Text style={styles.detailValue}>{formatDate(booking?.appointmentTime || booking?.appointmentDateTime)}</Text>
+            <Text style={styles.detailValue}>{formatDate(booking?.appointmentTime || '')}</Text>
           </View>
         </View>
         
