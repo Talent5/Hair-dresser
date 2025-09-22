@@ -1,0 +1,98 @@
+{
+  "expo": {
+    "name": "CurlMap - Hair Stylist Platform",
+    "slug": "curlmap-stylist-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "curlmap",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2E073F",
+      "imageUrl": "./assets/images/splash.png"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.curlmap.stylistapp",
+      "config": {
+        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app uses location to find nearby hair stylists and show your location on the map.",
+        "NSLocationAlwaysUsageDescription": "This app uses location to find nearby hair stylists and show your location on the map.",
+        "NSCameraUsageDescription": "This app uses camera to take photos for your portfolio and profile.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to upload portfolio images.",
+        "NSMicrophoneUsageDescription": "This app uses microphone for voice messages in chat."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#2E073F"
+      },
+      "package": "com.curlmap.stylistapp",
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+        }
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "com.google.android.c2dm.permission.RECEIVE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "This app uses location to find nearby hair stylists and show your location on the map."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with stylists.",
+          "cameraPermission": "The app accesses your camera to let you take profile and portfolio photos."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#7209B7"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow CurlMap to access camera for taking photos."
+        }
+      ],
+      "expo-font",
+      "expo-secure-store",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

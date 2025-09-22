@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2E073F;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#7209B7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#A855F7;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F8FAFC;stop-opacity:0.9" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" fill="url(#bgGradient)"/>
+  
+  <!-- Decorative circles -->
+  <circle cx="80" cy="80" r="20" fill="#FFFFFF" opacity="0.1"/>
+  <circle cx="320" cy="100" r="15" fill="#FFFFFF" opacity="0.15"/>
+  <circle cx="60" cy="320" r="25" fill="#FFFFFF" opacity="0.08"/>
+  <circle cx="340" cy="300" r="18" fill="#FFFFFF" opacity="0.12"/>
+  
+  <!-- Main Logo/Icon Container -->
+  <g transform="translate(200, 200)">
+    <!-- Outer circle with glow -->
+    <circle cx="0" cy="0" r="80" fill="url(#logoGradient)" filter="url(#glow)" opacity="0.2"/>
+    <circle cx="0" cy="0" r="70" fill="url(#logoGradient)" opacity="0.3"/>
+    <circle cx="0" cy="0" r="60" fill="url(#logoGradient)"/>
+    
+    <!-- Hair/Curl Icon -->
+    <g transform="translate(0, -10)">
+      <!-- Main curl shape -->
+      <path d="M-25 -15 C-35 -25, -35 -35, -20 -35 C0 -35, 15 -25, 15 -5 C15 15, 0 25, -15 25 C-25 25, -30 15, -25 5 C-20 -5, -10 -10, 0 -5" 
+            fill="#7209B7" stroke="#2E073F" stroke-width="2"/>
+      
+      <!-- Second curl -->
+      <path d="M10 -20 C20 -30, 30 -25, 25 -10 C20 5, 10 10, 0 5" 
+            fill="#A855F7" stroke="#2E073F" stroke-width="1.5"/>
+      
+      <!-- Third small curl -->
+      <path d="M-10 10 C0 20, 10 15, 5 5" 
+            fill="#4ECDC4" stroke="#2E073F" stroke-width="1"/>
+    </g>
+    
+    <!-- Scissors accent -->
+    <g transform="translate(20, 20) rotate(15)">
+      <path d="M-5 -2 L5 -2 L3 2 L-3 2 Z" fill="#FF6B6B"/>
+      <circle cx="-3" cy="0" r="2" fill="#FF6B6B"/>
+      <circle cx="3" cy="0" r="2" fill="#FF6B6B"/>
+    </g>
+  </g>
+  
+  <!-- App Name -->
+  <text x="200" y="320" text-anchor="middle" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="32" font-weight="bold">CurlMap</text>
+  <text x="200" y="345" text-anchor="middle" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="14" opacity="0.8">Hair Stylist Platform</text>
+  
+  <!-- Loading dots -->
+  <g transform="translate(200, 370)">
+    <circle cx="-15" cy="0" r="3" fill="#FFFFFF" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite" begin="0s"/>
+    </circle>
+    <circle cx="0" cy="0" r="3" fill="#FFFFFF" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite" begin="0.5s"/>
+    </circle>
+    <circle cx="15" cy="0" r="3" fill="#FFFFFF" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite" begin="1s"/>
+    </circle>
+  </g>
+</svg>
