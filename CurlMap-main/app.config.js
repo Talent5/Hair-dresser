@@ -1,4 +1,4 @@
-{
+export default {
   "expo": {
     "name": "CurlMap - Hair Stylist Platform",
     "slug": "curlmap-stylist-app",
@@ -20,9 +20,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.curlmap.stylistapp",
-      "config": {
-        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
-      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app uses location to find nearby hair stylists and show your location on the map.",
         "NSLocationAlwaysUsageDescription": "This app uses location to find nearby hair stylists and show your location on the map.",
@@ -38,11 +35,6 @@
       },
       "package": "com.curlmap.stylistapp",
       "versionCode": 1,
-      "config": {
-        "googleMaps": {
-          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
-        }
-      },
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -55,21 +47,7 @@
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
         "com.google.android.c2dm.permission.RECEIVE"
-      ],
-      "usesCleartextTraffic": true,
-      "networkSecurityConfig": {
-        "cleartextTrafficPermitted": true,
-        "domain": [
-          {
-            "includeSubdomains": true,
-            "name": "hair-dresser-adkn.onrender.com"
-          },
-          {
-            "includeSubdomains": true,
-            "name": "localhost"
-          }
-        ]
-      }
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -118,4 +96,4 @@
       }
     }
   }
-}
+};

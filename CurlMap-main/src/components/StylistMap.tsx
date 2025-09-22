@@ -8,7 +8,7 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
-import MapView, { Marker, Circle, Region, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Circle, Region } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { 
@@ -224,7 +224,6 @@ const StylistMap: React.FC<StylistMapProps> = ({
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
         initialRegion={region || {
           latitude: -17.8292, // Harare, Zimbabwe default
           longitude: 31.0522,

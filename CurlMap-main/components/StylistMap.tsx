@@ -16,7 +16,6 @@ import * as Location from 'expo-location';
 let MapView: any = null;
 let Marker: any = null;
 let Circle: any = null;
-let PROVIDER_GOOGLE: any = null;
 
 if (Platform.OS !== 'web') {
   try {
@@ -24,7 +23,6 @@ if (Platform.OS !== 'web') {
     MapView = maps.default || maps.MapView;
     Marker = maps.Marker;
     Circle = maps.Circle;
-    PROVIDER_GOOGLE = maps.PROVIDER_GOOGLE;
   } catch (error) {
     console.warn('react-native-maps not available:', error);
   }
@@ -314,7 +312,6 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
         initialRegion={region || {
           latitude: -17.8292, // Harare, Zimbabwe default
           longitude: 31.0522,

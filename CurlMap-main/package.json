@@ -24,7 +24,6 @@
     "reset": "npx react-native clean && npm run clean"
   },
   "dependencies": {
-    "@expo/metro-config": "~0.20.0",
     "@expo/vector-icons": "^14.0.0",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-community/netinfo": "^11.4.1",
@@ -33,7 +32,7 @@
     "@react-navigation/stack": "^7.0.0",
     "@reduxjs/toolkit": "^2.2.0",
     "axios": "^1.6.7",
-    "expo": "53.0.22",
+    "expo": "~53.0.23",
     "expo-blur": "~14.1.5",
     "expo-camera": "~16.1.11",
     "expo-constants": "~17.1.7",
@@ -46,7 +45,7 @@
     "expo-linking": "~7.1.7",
     "expo-location": "~18.1.6",
     "expo-notifications": "~0.31.4",
-    "expo-router": "~5.1.6",
+    "expo-router": "~5.1.7",
     "expo-secure-store": "~14.2.4",
     "expo-splash-screen": "~0.30.10",
     "expo-status-bar": "~2.2.3",
@@ -78,7 +77,6 @@
   "devDependencies": {
     "@babel/core": "^7.23.0",
     "@types/react": "~19.0.10",
-    "@types/react-native": "^0.73.0",
     "@typescript-eslint/eslint-plugin": "^6.19.1",
     "@typescript-eslint/parser": "^6.19.1",
     "eslint": "^8.56.0",

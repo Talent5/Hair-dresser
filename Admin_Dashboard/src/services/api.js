@@ -169,6 +169,21 @@ export const usersAPI = {
     }
   },
 
+  updateStatus: async (id, isActive, reason = '') => {
+    try {
+      const response = await api.patch(`/admin/users/${id}/status`, { isActive, reason });
+      return {
+        success: true,
+        data: response.data.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update user status'
+      };
+    }
+  },
+
   deactivate: async (id) => {
     try {
       const response = await api.patch(`/admin/users/${id}/deactivate`);
@@ -234,7 +249,10 @@ export const stylistsAPI = {
 
   suspend: async (id, reason) => {
     try {
-      const response = await api.patch(`/admin/stylists/${id}/suspend`, { reason });
+      const response = await api.patch(`/admin/users/${id}/status`, { 
+        isActive: false, 
+        reason 
+      });
       return {
         success: true,
         data: response.data.data
@@ -367,6 +385,55 @@ export const analyticsAPI = {
     }
   },
 
+  getTrends: async (period = '12') => {
+    try {
+      const response = await api.get('/admin/analytics/trends', {
+        params: { period }
+      });
+      return {
+        success: true,
+        data: response.data.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch trends data'
+      };
+    }
+  },
+
+  getServiceStats: async () => {
+    try {
+      const response = await api.get('/admin/analytics/services');
+      return {
+        success: true,
+        data: response.data.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch service stats'
+      };
+    }
+  },
+
+  getActivities: async (limit = 10) => {
+    try {
+      const response = await api.get('/admin/analytics/activities', {
+        params: { limit }
+      });
+      return {
+        success: true,
+        data: response.data.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch activities'
+      };
+    }
+  },
+
   getRevenueStats: async (period = '30d') => {
     try {
       const response = await api.get('/admin/analytics/revenue', {
@@ -414,6 +481,7 @@ export const apiService = {
   getUsers: usersAPI.getAll,
   getUser: usersAPI.getById,
   updateUser: usersAPI.update,
+  updateUserStatus: usersAPI.updateStatus,
   deactivateUser: usersAPI.deactivate,
 
   // Stylists
@@ -434,6 +502,9 @@ export const apiService = {
 
   // Analytics
   getAnalytics: analyticsAPI.getDashboardStats,
+  getTrends: analyticsAPI.getTrends,
+  getServiceStats: analyticsAPI.getServiceStats,
+  getActivities: analyticsAPI.getActivities,
   getRevenueStats: analyticsAPI.getRevenueStats,
   getUserStats: analyticsAPI.getUserStats
 };

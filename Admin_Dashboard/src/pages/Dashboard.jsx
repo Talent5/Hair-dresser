@@ -288,171 +288,253 @@ const Dashboard = () => {
     try {
       setIsLoading(true);
       
-      // Simulate API call with enhanced mock data
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Set enhanced overview stats
-      setStats({
-        totalUsers: 2847,
-        totalStylists: 156,
-        totalBookings: 1432,
-        totalRevenue: 284750,
-        activeBookings: 47,
-        pendingApprovals: 8,
-        monthlyGrowth: 23.5,
-        customerSatisfaction: 4.8
-      });
+      // Fetch real dashboard data
+      const [
+        analyticsResponse,
+        trendsResponse,
+        servicesResponse,
+        activitiesResponse,
+        recentBookingsResponse,
+        pendingStylistsResponse
+      ] = await Promise.all([
+        apiService.getAnalytics(),
+        apiService.getTrends('12'),
+        apiService.getServiceStats(),
+        apiService.getActivities(10),
+        apiService.getBookings({ limit: 5, status: 'confirmed' }),
+        apiService.getStylists({ verified: 'false', limit: 5 })
+      ]);
 
-      // Set trends with sparkline data
-      setTrends({
-        users: { value: 2847, change: 15.2, sparkline: [120, 135, 145, 142, 158, 165, 172] },
-        bookings: { value: 1432, change: 8.7, sparkline: [45, 52, 48, 61, 55, 67, 72] },
-        revenue: { value: 284750, change: 12.3, sparkline: [15000, 18000, 16500, 22000, 19500, 25000, 28000] },
-        satisfaction: { value: 4.8, change: 2.1, sparkline: [4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8] }
-      });
+      // Set overview stats from real data
+      if (analyticsResponse.success) {
+        const analytics = analyticsResponse.data;
+        setStats({
+          totalUsers: analytics.totalUsers || 0,
+          totalStylists: analytics.totalStylists || 0,
+          totalBookings: analytics.totalBookings || 0,
+          totalRevenue: analytics.totalRevenue || 0,
+          activeBookings: analytics.activeBookings || 0,
+          pendingApprovals: analytics.pendingApprovals || 0,
+          monthlyGrowth: analytics.growth?.revenue || 0,
+          customerSatisfaction: analytics.averageRating || 0
+        });
 
-      // Enhanced bookings chart
-      const bookingsLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const bookingsData = [85, 120, 145, 178, 165, 189, 203, 225, 198, 245, 267, 289];
-      
-      setChartData({
-        labels: bookingsLabels,
-        datasets: [
-          {
-            label: 'Bookings',
-            data: bookingsData,
-            borderColor: 'rgb(99, 102, 241)',
-            backgroundColor: 'rgba(99, 102, 241, 0.1)',
-            tension: 0.4,
-            fill: true,
-            pointBackgroundColor: 'rgb(99, 102, 241)',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2,
-            pointRadius: 5
+        // Set trends with real growth data
+        setTrends({
+          users: { 
+            value: analytics.totalUsers,
+            change: analytics.growth?.users || 0,
+            sparkline: [120, 135, 145, 142, 158, 165, analytics.totalUsers] // Can be enhanced with actual sparkline data
+          },
+          bookings: { 
+            value: analytics.totalBookings,
+            change: analytics.growth?.bookings || 0,
+            sparkline: [45, 52, 48, 61, 55, 67, analytics.totalBookings]
+          },
+          revenue: { 
+            value: analytics.totalRevenue,
+            change: analytics.growth?.revenue || 0,
+            sparkline: [15000, 18000, 16500, 22000, 19500, 25000, analytics.monthlyRevenue]
+          },
+          satisfaction: { 
+            value: analytics.averageRating,
+            change: 2.1, // This would need historical data to calculate properly
+            sparkline: [4.2, 4.3, 4.4, 4.5, 4.6, 4.7, analytics.averageRating]
           }
-        ]
-      });
+        });
+      }
 
-      // Revenue chart data
-      setRevenueChart({
-        labels: bookingsLabels,
-        datasets: [
-          {
-            label: 'Revenue ($)',
-            data: [12500, 18000, 22300, 19800, 26500, 31200, 28900, 35600, 32100, 38900, 42300, 45600],
-            backgroundColor: 'rgba(16, 185, 129, 0.8)',
-            borderColor: 'rgb(16, 185, 129)',
-            borderWidth: 2,
-            borderRadius: 8,
-            borderSkipped: false
-          }
-        ]
-      });
+      // Set chart data from trends
+      if (trendsResponse.success) {
+        const trends = trendsResponse.data;
+        
+        // Format booking trends for chart
+        const bookingLabels = [];
+        const bookingData = [];
+        const revenueData = [];
 
-      // Service distribution data
-      setServiceDistribution({
-        labels: ['Hair Braiding', 'Relaxers', 'Natural Hair Care', 'Extensions', 'Styling', 'Color'],
-        datasets: [
-          {
-            data: [35, 25, 20, 15, 15, 10],
-            backgroundColor: [
-              'rgba(99, 102, 241, 0.8)',
-              'rgba(16, 185, 129, 0.8)',
-              'rgba(245, 158, 11, 0.8)',
-              'rgba(239, 68, 68, 0.8)',
-              'rgba(139, 92, 246, 0.8)',
-              'rgba(236, 72, 153, 0.8)'
-            ],
-            borderWidth: 0
-          }
-        ]
-      });
-
-      // Mock recent activities
-      setActivities([
-        { type: 'booking', message: 'New booking from Sarah Johnson', time: '2 minutes ago', location: 'Harare' },
-        { type: 'payment', message: 'Payment received: $85.00', time: '5 minutes ago', location: 'Online' },
-        { type: 'user', message: 'Grace Mukamuri joined the platform', time: '12 minutes ago', location: 'Bulawayo' },
-        { type: 'stylist', message: 'New stylist application submitted', time: '1 hour ago', location: 'Gweru' },
-        { type: 'booking', message: 'Booking completed successfully', time: '2 hours ago', location: 'Harare' }
-      ]);
-
-      // AI-powered insights
-      setInsights([
-        {
-          type: 'positive',
-          title: 'Revenue Growth Acceleration',
-          description: 'Monthly revenue increased by 23% - highest growth this quarter'
-        },
-        {
-          type: 'warning',
-          title: 'Peak Hour Congestion',
-          description: 'Saturday 2-4 PM shows 85% booking saturation. Consider promoting off-peak slots'
-        },
-        {
-          type: 'info',
-          title: 'Service Trend Analysis',
-          description: 'Natural hair care services up 40% this month - trending service category'
+        // Create labels for last 12 months
+        for (let i = 11; i >= 0; i--) {
+          const date = new Date();
+          date.setMonth(date.getMonth() - i);
+          bookingLabels.push(date.toLocaleDateString('en-US', { month: 'short' }));
+          
+          // Find matching data for this month
+          const monthData = trends.bookings.find(b => 
+            b._id.year === date.getFullYear() && b._id.month === date.getMonth() + 1
+          );
+          const revenueMonthData = trends.revenue.find(r => 
+            r._id.year === date.getFullYear() && r._id.month === date.getMonth() + 1
+          );
+          
+          bookingData.push(monthData ? monthData.count : 0);
+          revenueData.push(revenueMonthData ? revenueMonthData.revenue : 0);
         }
-      ]);
 
-      // Enhanced recent bookings
-      setRecentBookings([
-        { 
-          id: 1, 
-          customer: 'Sarah Johnson', 
-          stylist: 'Maya Stevens', 
-          service: 'Knotless Braids', 
-          status: 'confirmed', 
-          date: '2025-01-15',
-          amount: 120,
-          rating: 5
-        },
-        { 
-          id: 2, 
-          customer: 'Grace Mukamuri', 
-          stylist: 'Tanya Chipo', 
-          service: 'Silk Press', 
-          status: 'pending', 
-          date: '2025-01-16',
-          amount: 85,
-          rating: null
-        },
-        { 
-          id: 3, 
-          customer: 'Faith Mapfumo', 
-          stylist: 'Lisa Sibanda', 
-          service: 'Twist Out', 
-          status: 'completed', 
-          date: '2025-01-14',
-          amount: 65,
-          rating: 4.8
-        }
-      ]);
+        setChartData({
+          labels: bookingLabels,
+          datasets: [
+            {
+              label: 'Bookings',
+              data: bookingData,
+              borderColor: 'rgb(99, 102, 241)',
+              backgroundColor: 'rgba(99, 102, 241, 0.1)',
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: 'rgb(99, 102, 241)',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointRadius: 5
+            }
+          ]
+        });
 
-      setPendingStylists([
-        { 
-          id: 1, 
-          name: 'Angela Mhandu', 
-          email: 'angela@email.com', 
-          experience: '3 years', 
-          joinDate: '2025-01-10',
-          specialties: ['Braids', 'Natural Hair'],
-          rating: 4.7
-        },
-        { 
-          id: 2, 
-          name: 'Chipo Mandaza', 
-          email: 'chipo@email.com', 
-          experience: '5 years', 
-          joinDate: '2025-01-12',
-          specialties: ['Relaxers', 'Color'],
-          rating: 4.9
+        setRevenueChart({
+          labels: bookingLabels,
+          datasets: [
+            {
+              label: 'Revenue ($)',
+              data: revenueData,
+              backgroundColor: 'rgba(16, 185, 129, 0.8)',
+              borderColor: 'rgb(16, 185, 129)',
+              borderWidth: 2,
+              borderRadius: 8,
+              borderSkipped: false
+            }
+          ]
+        });
+      }
+
+      // Set service distribution from real data
+      if (servicesResponse.success) {
+        const services = servicesResponse.data;
+        const serviceLabels = services.map(s => s._id || 'Unknown Service');
+        const serviceData = services.map(s => s.count);
+        
+        setServiceDistribution({
+          labels: serviceLabels,
+          datasets: [
+            {
+              data: serviceData,
+              backgroundColor: [
+                'rgba(99, 102, 241, 0.8)',
+                'rgba(16, 185, 129, 0.8)',
+                'rgba(245, 158, 11, 0.8)',
+                'rgba(239, 68, 68, 0.8)',
+                'rgba(139, 92, 246, 0.8)',
+                'rgba(236, 72, 153, 0.8)'
+              ],
+              borderWidth: 0
+            }
+          ]
+        });
+      }
+
+      // Set real activities
+      if (activitiesResponse.success) {
+        const formattedActivities = activitiesResponse.data.map(activity => ({
+          type: activity.type,
+          message: activity.message,
+          time: new Date(activity.time).toLocaleString(),
+          location: activity.location
+        }));
+        setActivities(formattedActivities);
+      }
+
+      // Set real recent bookings
+      if (recentBookingsResponse.success) {
+        const bookings = recentBookingsResponse.data.bookings || [];
+        const formattedBookings = bookings.slice(0, 5).map(booking => ({
+          id: booking._id,
+          customer: booking.userId?.name || 'Unknown Customer',
+          stylist: booking.stylistId?.name || 'Unknown Stylist',
+          service: booking.serviceName || 'Unknown Service',
+          status: booking.status,
+          date: booking.scheduledDate || booking.createdAt,
+          amount: booking.totalPrice || 0,
+          rating: booking.rating
+        }));
+        setRecentBookings(formattedBookings);
+      }
+
+      // Set real pending stylists
+      if (pendingStylistsResponse.success) {
+        const stylists = pendingStylistsResponse.data.stylists || [];
+        const formattedStylists = stylists.slice(0, 5).map(stylist => ({
+          id: stylist._id,
+          name: stylist.name || 'Unknown Stylist',
+          email: stylist.email,
+          experience: stylist.stylistProfile?.experience || '0 years',
+          joinDate: stylist.createdAt,
+          specialties: stylist.stylistProfile?.services || [],
+          rating: stylist.stylistProfile?.rating || 0
+        }));
+        setPendingStylists(formattedStylists);
+      }
+
+      // Generate AI insights based on real data
+      const generatedInsights = [];
+      if (analyticsResponse.success) {
+        const analytics = analyticsResponse.data;
+        
+        if (analytics.growth?.revenue > 10) {
+          generatedInsights.push({
+            type: 'positive',
+            title: 'Revenue Growth Acceleration',
+            description: `Monthly revenue increased by ${analytics.growth.revenue.toFixed(1)}% - strong platform growth`
+          });
         }
-      ]);
+
+        if (analytics.pendingApprovals > 5) {
+          generatedInsights.push({
+            type: 'warning',
+            title: 'Pending Stylist Approvals',
+            description: `${analytics.pendingApprovals} stylist applications awaiting review`
+          });
+        }
+
+        if (analytics.averageRating > 4.5) {
+          generatedInsights.push({
+            type: 'positive',
+            title: 'High Customer Satisfaction',
+            description: `Average rating of ${analytics.averageRating.toFixed(1)} indicates excellent service quality`
+          });
+        }
+
+        if (analytics.growth?.users > 0) {
+          generatedInsights.push({
+            type: 'info',
+            title: 'User Base Expansion',
+            description: `User growth of ${analytics.growth.users.toFixed(1)}% this month`
+          });
+        }
+      }
+
+      setInsights(generatedInsights);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      
+      // Fallback to basic mock data if API fails
+      setStats({
+        totalUsers: 0,
+        totalStylists: 0,
+        totalBookings: 0,
+        totalRevenue: 0,
+        activeBookings: 0,
+        pendingApprovals: 0,
+        monthlyGrowth: 0,
+        customerSatisfaction: 0
+      });
+
+      setInsights([
+        {
+          type: 'warning',
+          title: 'Data Loading Issue',
+          description: 'Unable to fetch real-time dashboard data. Please check your connection.'
+        }
+      ]);
+      
     } finally {
       setIsLoading(false);
     }

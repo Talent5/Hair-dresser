@@ -20,14 +20,12 @@ import { apiService } from '@/services/api';
 // Conditional import for react-native-maps - only on native platforms
 let MapView: any = null;
 let Marker: any = null;
-let PROVIDER_GOOGLE: any = null;
 
 if (Platform.OS !== 'web') {
   try {
     const maps = require('react-native-maps');
     MapView = maps.default || maps.MapView;
     Marker = maps.Marker;
-    PROVIDER_GOOGLE = maps.PROVIDER_GOOGLE;
   } catch (error) {
     console.warn('react-native-maps not available:', error);
   }
@@ -220,7 +218,6 @@ export default function StylistLocationUpdate() {
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
         region={region}
         onPress={handleMapPress}
         showsUserLocation={false}

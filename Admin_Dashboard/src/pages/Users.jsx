@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MagnifyingGlassIcon, PlusIcon, EyeIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { apiService } from '../services/api';
 
@@ -15,23 +15,36 @@ const Users = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [currentPage, searchTerm]);
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setCurrentPage(1); // Reset to first page when searching
+      fetchUsers();
+    }, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await apiService.getUsers();
-      setUsers(response.data || []);
+      const response = await apiService.getUsers({
+        page: currentPage,
+        limit: usersPerPage,
+        search: searchTerm
+      });
+      
+      if (response.success) {
+        setUsers(response.data.users || []);
+      } else {
+        console.error('Failed to fetch users:', response.message);
+        setUsers([]);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
-      // Mock data for demo
-      setUsers([
-        { id: 1, name: 'Sarah Johnson', email: 'sarah@email.com', phone: '+263 77 123 4567', status: 'active', joinDate: '2024-12-15', totalBookings: 12 },
-        { id: 2, name: 'Grace Mukamuri', email: 'grace@email.com', phone: '+263 77 234 5678', status: 'active', joinDate: '2024-12-20', totalBookings: 8 },
-        { id: 3, name: 'Faith Mapfumo', email: 'faith@email.com', phone: '+263 77 345 6789', status: 'inactive', joinDate: '2024-11-10', totalBookings: 3 },
-        { id: 4, name: 'Mary Chitongo', email: 'mary@email.com', phone: '+263 77 456 7890', status: 'active', joinDate: '2025-01-05', totalBookings: 1 },
-        { id: 5, name: 'Linda Musekiwa', email: 'linda@email.com', phone: '+263 77 567 8901', status: 'active', joinDate: '2024-12-28', totalBookings: 6 }
-      ]);
+      setUsers([]);
     } finally {
       setIsLoading(false);
     }
