@@ -24,13 +24,13 @@ const loadMapComponents = () => {
   }
   
   try {
-    const maplibre = require('@maplibre/maplibre-react-native');
-    MapView = maplibre.MapView;
-    Marker = maplibre.PointAnnotation;
-    Circle = maplibre.CircleLayer;
+    const maps = require('react-native-maps');
+    MapView = maps.default || maps.MapView;
+    Marker = maps.Marker;
+    Circle = maps.Circle;
     return !!(MapView && Marker && Circle);
   } catch (error) {
-    console.warn('MapLibre failed to load:', error);
+    console.warn('react-native-maps failed to load:', error);
     return false;
   }
 };
@@ -49,7 +49,7 @@ import {
 } from '../constants';
 import { LocationService } from '../utils/location';
 
-// Define types locally to avoid importing from MapLibre
+// Define types locally to avoid importing from react-native-maps
 type Region = {
   latitude: number;
   longitude: number;

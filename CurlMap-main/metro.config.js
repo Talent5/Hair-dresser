@@ -2,10 +2,10 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-// Ensure proper resolution for MapLibre and prevent TurboModule conflicts
+// Ensure proper resolution for react-native-maps and prevent TurboModule conflicts
 config.resolver.alias = {
   ...config.resolver.alias,
-  '@maplibre/maplibre-react-native': '@maplibre/maplibre-react-native',
+  'react-native-maps': 'react-native-maps',
 };
 
 // Add support for better module resolution in production

@@ -40,7 +40,7 @@ class SearchErrorBoundary extends Component<Props, State> {
       console.warn('Location/Permission error detected');
     }
     
-    if (error.message?.includes('Map') || error.message?.includes('maplibre')) {
+    if (error.message?.includes('Map') || error.message?.includes('react-native-maps')) {
       console.warn('Map-related error detected');
     }
   }

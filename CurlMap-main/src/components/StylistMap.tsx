@@ -12,23 +12,23 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 
-// Conditional import for MapLibre
+// Conditional import for react-native-maps
 let MapView: any = null;
 let Marker: any = null;
 let Circle: any = null;
 
 if (Platform.OS !== 'web') {
   try {
-    const maplibre = require('@maplibre/maplibre-react-native');
-    MapView = maplibre.MapView;
-    Marker = maplibre.PointAnnotation;
-    Circle = maplibre.CircleLayer;
+    const maps = require('react-native-maps');
+    MapView = maps.default || maps.MapView;
+    Marker = maps.Marker;
+    Circle = maps.Circle;
   } catch (error) {
-    console.warn('MapLibre not available:', error);
+    console.warn('react-native-maps not available:', error);
   }
 }
 
-// Define types locally to avoid importing from MapLibre
+// Define types locally to avoid importing from react-native-maps
 type Region = {
   latitude: number;
   longitude: number;
@@ -153,7 +153,7 @@ const StylistMap: React.FC<StylistMapProps> = ({
     const isSelected = selectedStylist?._id === stylist._id;
     
     return (
-      <Marker
+      <ExpoMarker
         key={stylist._id}
         coordinate={{
           latitude: stylist.user?.location?.coordinates?.[1] || 0,
@@ -192,7 +192,7 @@ const StylistMap: React.FC<StylistMapProps> = ({
             </Text>
           </View>
         )}
-      </Marker>
+      </ExpoMarker>
     );
   };
 
@@ -200,14 +200,14 @@ const StylistMap: React.FC<StylistMapProps> = ({
     if (!userLocation) return null;
 
     return (
-      <Marker
+      <ExpoMarker
         coordinate={userLocation}
         anchor={{ x: 0.5, y: 0.5 }}
       >
         <View style={styles.userMarker}>
           <View style={styles.userMarkerInner} />
         </View>
-      </Marker>
+      </ExpoMarker>
     );
   };
 
