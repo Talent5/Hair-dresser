@@ -33,7 +33,7 @@ import Header from '@/components/Header';
 import ProductionSafeMap from '@/components/ProductionSafeMap';
 import StylistCard from '@/components/StylistCard';
 import SearchFiltersModal from '@/components/SearchFiltersModal';
-import SearchErrorBoundary from '@/components/SearchErrorBoundary';
+import ProductionErrorBoundary from '@/components/ProductionErrorBoundary';
 import { LocationService } from '@/utils/location';
 import { apiService } from '@/services/api';
 
@@ -59,10 +59,13 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ route }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<SearchFilters>({
-    radius: 0, // Default to "All" stylists instead of limited radius
-    sortBy: 'distance',
-    ...route?.params?.filters,
+  const [filters, setFilters] = useState<SearchFilters>(() => {
+    // Initialize with route params or defaults
+    const defaultFilters = {
+      radius: 0, // Default to "All" stylists instead of limited radius
+      sortBy: 'distance' as const,
+    };
+    return { ...defaultFilters, ...route?.params?.filters };
   });
 
   const navigation = useNavigation();
@@ -72,7 +75,10 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ route }) => {
   // Initialize location and search
   useFocusEffect(
     useCallback(() => {
-      initializeSearch();
+      // Only initialize if we don't have location or this is the first load
+      if (!userLocation) {
+        initializeSearch();
+      }
     }, [])
   );
 
@@ -81,17 +87,20 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ route }) => {
       setIsLoading(true);
       
       // Get user location
-      let location = route?.params?.location;
+      let location = route?.params?.location || userLocation;
       if (!location) {
         const currentLocation = await getCurrentLocation();
         if (currentLocation) {
           location = currentLocation;
+          setUserLocation(currentLocation);
         }
       }
       
       if (location) {
-        setUserLocation(location);
-        await searchStylists(location, filters);
+        // Only search if we have stylists to avoid unnecessary API calls
+        if (stylists.length === 0) {
+          await searchStylists(location, filters);
+        }
       }
     } catch (error) {
       console.error('Error initializing search:', error);
@@ -123,31 +132,60 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ route }) => {
     try {
       setIsLoading(true);
       
+      // Validate location coordinates
+      if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
+        throw new Error('Invalid location coordinates');
+      }
+      
       // Use real API to search stylists
       const response = await apiService.searchStylists(location, searchFilters);
       console.log('Search response:', response);
       
-      if (response.success && response.data && response.data.stylists) {
+      if (response?.success && response?.data && Array.isArray(response.data.stylists)) {
         const stylistsData = response.data.stylists;
-        const stylistsWithDistance = stylistsData.map((stylist: any) => ({
-          ...stylist,
-          distance: stylist.distance || LocationService.calculateDistance(location, {
-            latitude: stylist.user?.location?.coordinates?.[1] || 0,
-            longitude: stylist.user?.location?.coordinates?.[0] || 0,
-          }),
-        }));
+        const stylistsWithDistance = stylistsData.map((stylist: any) => {
+          // Safely calculate distance
+          let distance = 0;
+          try {
+            if (stylist?.user?.location?.coordinates && Array.isArray(stylist.user.location.coordinates)) {
+              const [longitude, latitude] = stylist.user.location.coordinates;
+              if (typeof latitude === 'number' && typeof longitude === 'number') {
+                distance = LocationService.calculateDistance(location, { latitude, longitude });
+              }
+            }
+          } catch (distanceError) {
+            console.warn('Error calculating distance for stylist:', distanceError);
+          }
+          
+          return {
+            ...stylist,
+            distance: stylist.distance || distance,
+          };
+        });
+        
         setStylists(stylistsWithDistance);
         setFilteredStylists(stylistsWithDistance);
         console.log(`Found ${stylistsWithDistance.length} stylists from database`);
       } else {
         console.log('No stylists found in database or invalid response structure');
-        console.log('Response data:', response.data);
+        console.log('Response data:', response?.data);
         setStylists([]);
         setFilteredStylists([]);
       }
     } catch (error) {
       console.error('Error searching stylists:', error);
-      Alert.alert('Error', 'Failed to search for stylists. Please check your connection.');
+      
+      // More specific error handling
+      let errorMessage = 'Failed to search for stylists. Please check your connection.';
+      if (error instanceof Error) {
+        if (error.message.includes('Network') || error.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your internet connection.';
+        } else if (error.message.includes('location')) {
+          errorMessage = 'Location error. Please enable location permissions.';
+        }
+      }
+      
+      Alert.alert('Search Error', errorMessage);
       setStylists([]);
       setFilteredStylists([]);
     } finally {
@@ -157,19 +195,26 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ route }) => {
 
   // Filter stylists based on search query
   const filterStylists = useCallback((query: string, stylistList: StylistSearchResult[]) => {
-    if (!query.trim()) {
-      return stylistList;
+    if (!query.trim() || !Array.isArray(stylistList)) {
+      return Array.isArray(stylistList) ? stylistList : [];
     }
 
     const lowercaseQuery = query.toLowerCase();
     return stylistList.filter(stylist => {
-      const name = stylist.user?.name?.toLowerCase() || '';
-      const bio = stylist.bio?.toLowerCase() || '';
-      const specialties = stylist.specialties?.join(' ').toLowerCase() || '';
-      
-      return name.includes(lowercaseQuery) || 
-             bio.includes(lowercaseQuery) || 
-             specialties.includes(lowercaseQuery);
+      try {
+        const name = stylist?.user?.name?.toLowerCase() || stylist?.name?.toLowerCase() || '';
+        const bio = stylist?.bio?.toLowerCase() || '';
+        const specialties = Array.isArray(stylist?.specialties) 
+          ? stylist.specialties.join(' ').toLowerCase() 
+          : '';
+        
+        return name.includes(lowercaseQuery) || 
+               bio.includes(lowercaseQuery) || 
+               specialties.includes(lowercaseQuery);
+      } catch (filterError) {
+        console.warn('Error filtering stylist:', filterError);
+        return false;
+      }
     });
   }, []);
 
@@ -212,12 +257,14 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ route }) => {
   const handleRefresh = async () => {
     if (userLocation) {
       setIsRefreshing(true);
+      console.log('Refreshing with current filters:', filters);
       await searchStylists(userLocation, filters);
       setIsRefreshing(false);
     }
   };
 
   const handleFiltersApply = async (newFilters: SearchFilters) => {
+    console.log('Applying new filters:', newFilters);
     setFilters(newFilters);
     setShowFilters(false);
     
@@ -374,7 +421,15 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ route }) => {
   );
 
   return (
-    <SearchErrorBoundary fallbackMessage="There was an issue loading the stylist search. This might be due to location permissions or Google Maps configuration.">
+    <ProductionErrorBoundary 
+      fallbackMessage="There was an issue loading the stylist search. This might be due to location permissions or Google Maps configuration."
+      onRetry={() => {
+        // Reset state and try again
+        setStylists([]);
+        setFilteredStylists([]);
+        initializeSearch();
+      }}
+    >
       <View style={styles.container}>
         <Header title="Find Stylists" />
         {renderSearchHeader()}
@@ -390,19 +445,8 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ route }) => {
           onApply={handleFiltersApply}
           onClose={() => setShowFilters(false)}
         />
-
-        {/* Results Summary */}
-        {!isLoading && (
-          <View style={styles.resultsSummary}>
-            <Text style={styles.resultsSummaryText}>
-              {sortedStylists.length} stylists found
-              {userLocation && filters.radius > 0 && ` within ${filters.radius}km`}
-              {userLocation && filters.radius === 0 && ` (all stylists)`}
-            </Text>
-          </View>
-        )}
       </View>
-    </SearchErrorBoundary>
+    </ProductionErrorBoundary>
   );
 };
 

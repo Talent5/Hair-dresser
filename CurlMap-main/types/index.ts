@@ -6,6 +6,7 @@ export interface User {
   phone: string;
   email: string;
   profileImage?: string;
+  avatar?: string; // Add avatar property for compatibility
   location: {
     type: 'Point';
     coordinates: [number, number]; // [longitude, latitude]
@@ -22,6 +23,7 @@ export interface Stylist {
   _id: string;
   userId: string;
   user?: User;
+  name?: string; // Add compatibility property
   portfolio: PortfolioItem[];
   schedule: ScheduleItem[];
   basePrices: ServicePrice[];
@@ -296,6 +298,29 @@ export interface BookingsResponse {
     total: number;
     pages: number;
   };
+}
+
+// Rating type for imports
+export interface Rating {
+  _id: string;
+  userId: string;
+  stylistId: string;
+  bookingId: string;
+  overall: number;
+  categories: {
+    quality: number;
+    punctuality: number;
+    professionalism: number;
+    valueForMoney: number;
+  };
+  comment?: string;
+  helpful?: {
+    yes: number;
+    no: number;
+  };
+  isAnonymous: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Navigation Types

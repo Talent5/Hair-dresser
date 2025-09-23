@@ -26,7 +26,7 @@ class TurboModuleErrorBoundary extends Component<Props, State> {
                               error.stack?.includes('TurboModuleRegistry');
     
     return {
-      hasError: isTurboModuleError,
+      hasError: Boolean(isTurboModuleError),
       error: isTurboModuleError ? error : undefined
     };
   }

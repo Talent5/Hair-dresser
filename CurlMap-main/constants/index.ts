@@ -42,6 +42,7 @@ export const COLORS = {
   // Neutral Colors
   WHITE: '#FFFFFF',
   BLACK: '#000000',
+  GRAY_50: '#FAFAFA',
   GRAY_100: '#F5F5F5',
   GRAY_200: '#E5E5E5',
   GRAY_300: '#D4D4D4',
@@ -56,7 +57,13 @@ export const COLORS = {
   SUCCESS: '#22C55E',
   WARNING: '#F59E0B',
   ERROR: '#EF4444',
+  ERROR_LIGHT: '#FEE2E2',
   INFO: '#3B82F6',
+  INFO_LIGHT: '#DBEAFE',
+  
+  // Border Colors
+  BORDER: '#E5E7EB',
+  BORDER_LIGHT: '#F3F4F6',
   
   // Background Colors
   BACKGROUND: '#FAFAFA',

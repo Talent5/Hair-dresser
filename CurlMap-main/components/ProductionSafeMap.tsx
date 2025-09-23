@@ -385,7 +385,8 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
       {stylists.length > 0 && (
         <View style={styles.resultsContainer}>
           <Text style={styles.resultsText}>
-            {stylists.length} stylist{stylists.length !== 1 ? 's' : ''} found nearby
+            {stylists.length} stylist{stylists.length !== 1 ? 's' : ''} found
+            {searchRadius && searchRadius > 0 ? ` within ${searchRadius}km` : ''}
           </Text>
         </View>
       )}
