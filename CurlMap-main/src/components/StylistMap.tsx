@@ -152,12 +152,23 @@ const StylistMap: React.FC<StylistMapProps> = ({
   const renderStylistMarker = (stylist: StylistSearchResult) => {
     const isSelected = selectedStylist?._id === stylist._id;
     
+    // Validate stylist coordinates
+    const lat = stylist.user?.location?.coordinates?.[1];
+    const lng = stylist.user?.location?.coordinates?.[0];
+    
+    if (typeof lat !== 'number' || typeof lng !== 'number' || 
+        isNaN(lat) || isNaN(lng) || 
+        lat === 0 || lng === 0) {
+      console.warn('Invalid stylist coordinates:', stylist._id, lat, lng);
+      return null;
+    }
+    
     return (
-      <ExpoMarker
+      <Marker
         key={stylist._id}
         coordinate={{
-          latitude: stylist.user?.location?.coordinates?.[1] || 0,
-          longitude: stylist.user?.location?.coordinates?.[0] || 0,
+          latitude: lat,
+          longitude: lng,
         }}
         onPress={() => onStylistSelect(stylist)}
         anchor={{ x: 0.5, y: 1 }}
@@ -192,31 +203,52 @@ const StylistMap: React.FC<StylistMapProps> = ({
             </Text>
           </View>
         )}
-      </ExpoMarker>
+      </Marker>
     );
   };
 
   const renderUserLocationMarker = () => {
-    if (!userLocation) return null;
+    if (!userLocation || 
+        typeof userLocation.latitude !== 'number' || 
+        typeof userLocation.longitude !== 'number' ||
+        isNaN(userLocation.latitude) || 
+        isNaN(userLocation.longitude)) {
+      return null;
+    }
 
     return (
-      <ExpoMarker
-        coordinate={userLocation}
+      <Marker
+        coordinate={{
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+        }}
         anchor={{ x: 0.5, y: 0.5 }}
       >
         <View style={styles.userMarker}>
           <View style={styles.userMarkerInner} />
         </View>
-      </ExpoMarker>
+      </Marker>
     );
   };
 
   const renderSearchRadius = () => {
-    if (!userLocation) return null;
+    if (!userLocation || 
+        typeof userLocation.latitude !== 'number' || 
+        typeof userLocation.longitude !== 'number' ||
+        isNaN(userLocation.latitude) || 
+        isNaN(userLocation.longitude) ||
+        typeof searchRadius !== 'number' ||
+        isNaN(searchRadius) ||
+        searchRadius <= 0) {
+      return null;
+    }
 
     return (
       <Circle
-        center={userLocation}
+        center={{
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+        }}
         radius={searchRadius * 1000} // Convert km to meters
         strokeColor={COLORS.PRIMARY}
         strokeWidth={2}
@@ -248,15 +280,14 @@ const StylistMap: React.FC<StylistMapProps> = ({
       <MapView
         ref={mapRef}
         style={styles.map}
-        initialRegion={region || {
-          latitude: -17.8292, // Harare, Zimbabwe default
+        provider={null} // Use default OpenStreetMap provider (completely free!)
+        initialRegion={{
+          latitude: -17.8292,
           longitude: 31.0522,
-          latitudeDelta: LATITUDE_DELTA,
-          longitudeDelta: LONGITUDE_DELTA,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
         }}
-        region={region || undefined}
         onMapReady={handleMapReady}
-        onRegionChangeComplete={handleRegionChangeComplete}
         showsUserLocation={false} // We'll use custom marker
         showsMyLocationButton={false}
         showsCompass={false}
@@ -264,10 +295,24 @@ const StylistMap: React.FC<StylistMapProps> = ({
         loadingEnabled={true}
         loadingIndicatorColor={COLORS.PRIMARY}
         loadingBackgroundColor={COLORS.WHITE}
+        mapType="standard"
+        // Enhanced performance settings
+        cacheEnabled={true}
+        maxZoomLevel={20}
+        minZoomLevel={3}
+        showsPointsOfInterest={true}
+        showsBuildings={true}
+        showsTraffic={false}
+        rotateEnabled={true}
+        scrollEnabled={true}
+        zoomEnabled={true}
+        pitchEnabled={false}
       >
+        {/* Temporarily disabled for debugging
         {renderUserLocationMarker()}
         {renderSearchRadius()}
         {stylists.map(renderStylistMarker)}
+        */}
       </MapView>
 
       {/* Loading overlay */}

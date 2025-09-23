@@ -302,15 +302,18 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ route }) => {
 
   const renderMapView = () => {
     try {
+      // Validate that we have the necessary data before rendering the map
+      const mapProps = {
+        stylists: sortedStylists || [],
+        userLocation: userLocation,
+        onStylistSelect: handleStylistSelect,
+        selectedStylist: selectedStylist,
+        isLoading: isLoading,
+        searchRadius: filters.radius || 0,
+      };
+
       return (
-        <ProductionSafeMap
-          stylists={sortedStylists}
-          userLocation={userLocation}
-          onStylistSelect={handleStylistSelect}
-          selectedStylist={selectedStylist}
-          isLoading={isLoading}
-          searchRadius={filters.radius}
-        />
+        <ProductionSafeMap {...mapProps} />
       );
     } catch (error) {
       console.error('Map rendering error:', error);
@@ -320,7 +323,7 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ route }) => {
           <Ionicons name="map-outline" size={64} color={COLORS.GRAY_400} />
           <Text style={styles.mapErrorTitle}>Map Unavailable</Text>
           <Text style={styles.mapErrorText}>
-            Unable to load the map. Showing list view instead.
+            Unable to load Google Maps. Please check your API key configuration.
           </Text>
           {renderListView()}
         </View>
@@ -371,7 +374,7 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ route }) => {
   );
 
   return (
-    <SearchErrorBoundary fallbackMessage="There was an issue loading the stylist search. This might be due to location permissions or map functionality.">
+    <SearchErrorBoundary fallbackMessage="There was an issue loading the stylist search. This might be due to location permissions or Google Maps configuration.">
       <View style={styles.container}>
         <Header title="Find Stylists" />
         {renderSearchHeader()}

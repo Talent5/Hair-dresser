@@ -20,6 +20,9 @@ export default {
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.curlmap.stylistapp",
+      "config": {
+        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE"
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app uses location to find nearby hair stylists and show your location on the map.",
         "NSLocationAlwaysUsageDescription": "This app uses location to find nearby hair stylists and show your location on the map.",
@@ -47,7 +50,12 @@ export default {
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
         "com.google.android.c2dm.permission.RECEIVE"
-      ]
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE"
+        }
+      }
     },
     "web": {
       "bundler": "metro",

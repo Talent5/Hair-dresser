@@ -67,39 +67,92 @@ interface StylistMapProps {
   onRegionChange?: (region: Region) => void;
 }
 
-// Web fallback component
+// Web fallback component with interactive map
 const WebMapFallback: React.FC<StylistMapProps> = ({
   stylists,
   userLocation,
   isLoading,
 }) => {
-  return (
-    <View style={styles.container}>
-      <View style={styles.webMapPlaceholder}>
-        <Ionicons name="map-outline" size={64} color={COLORS.GRAY_400} />
-        <Text style={styles.webMapTitle}>Map View</Text>
-        <Text style={styles.webMapText}>
-          Interactive map is not available on web.{'\n'}
-          Switch to list view to browse stylists.
-        </Text>
+  const [showInteractiveMap, setShowInteractiveMap] = useState(false);
+
+  // Simple interactive web map using OpenStreetMap tiles
+  const renderInteractiveWebMap = () => {
+    if (!showInteractiveMap) {
+      return (
+        <View style={styles.webMapPlaceholder}>
+          <Ionicons name="map-outline" size={64} color={COLORS.PRIMARY} />
+          <Text style={styles.webMapTitle}>Free Interactive Map</Text>
+          <Text style={styles.webMapText}>
+            Using OpenStreetMap - completely free with no billing required!
+          </Text>
+          
+          <TouchableOpacity
+            style={styles.enableMapButton}
+            onPress={() => setShowInteractiveMap(true)}
+          >
+            <Ionicons name="map" size={20} color={COLORS.WHITE} />
+            <Text style={styles.enableMapButtonText}>Show Interactive Map</Text>
+          </TouchableOpacity>
+
+          {userLocation && (
+            <View style={styles.locationInfo}>
+              <Ionicons name="location" size={16} color={COLORS.PRIMARY} />
+              <Text style={styles.locationText}>
+                Current Location: {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
+              </Text>
+            </View>
+          )}
+          
+          {stylists.length > 0 && (
+            <View style={styles.stylistsInfo}>
+              <Text style={styles.stylistsCount}>
+                {stylists.length} stylist{stylists.length !== 1 ? 's' : ''} found nearby
+              </Text>
+            </View>
+          )}
+        </View>
+      );
+    }
+
+    // Basic iframe-based OpenStreetMap for web
+    const lat = userLocation?.latitude || -17.8292;
+    const lng = userLocation?.longitude || 31.0522;
+    const zoom = 13;
+    
+    return (
+      <View style={styles.webMapContainer}>
+        <iframe
+          src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.01},${lat-0.01},${lng+0.01},${lat+0.01}&layer=mapnik&marker=${lat},${lng}`}
+          style={{
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            borderRadius: 12,
+          }}
+          title="Free OpenStreetMap"
+        />
         
-        {userLocation && (
-          <View style={styles.locationInfo}>
-            <Ionicons name="location" size={16} color={COLORS.PRIMARY} />
-            <Text style={styles.locationText}>
-              Searching near: {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
-            </Text>
-          </View>
-        )}
-        
+        <TouchableOpacity
+          style={styles.webMapCloseButton}
+          onPress={() => setShowInteractiveMap(false)}
+        >
+          <Ionicons name="close" size={20} color={COLORS.WHITE} />
+        </TouchableOpacity>
+
         {stylists.length > 0 && (
-          <View style={styles.stylistsInfo}>
-            <Text style={styles.stylistsCount}>
-              {stylists.length} stylist{stylists.length !== 1 ? 's' : ''} found
+          <View style={styles.webMapResultsContainer}>
+            <Text style={styles.webMapResultsText}>
+              {stylists.length} stylist{stylists.length !== 1 ? 's' : ''} nearby
             </Text>
           </View>
         )}
       </View>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      {renderInteractiveWebMap()}
       
       {isLoading && (
         <View style={styles.loadingOverlay}>
@@ -138,7 +191,12 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
   }
   
   const mapRef = useRef<any>(null);
-  const [region, setRegion] = useState<Region | null>(null);
+  const [region, setRegion] = useState<Region>({
+    latitude: -17.8292,
+    longitude: 31.0522,
+    latitudeDelta: LATITUDE_DELTA,
+    longitudeDelta: LONGITUDE_DELTA,
+  });
   const [isMapReady, setIsMapReady] = useState(false);
   const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
 
@@ -219,19 +277,34 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
   };
 
   const handleRegionChangeComplete = (newRegion: Region) => {
-    setRegion(newRegion);
-    onRegionChange?.(newRegion);
+    if (newRegion && typeof newRegion === 'object' && 
+        typeof newRegion.latitude === 'number' && 
+        typeof newRegion.longitude === 'number') {
+      setRegion(newRegion);
+      onRegionChange?.(newRegion);
+    }
   };
 
   const renderStylistMarker = (stylist: StylistSearchResult) => {
     const isSelected = selectedStylist?._id === stylist._id;
     
+    // Validate stylist coordinates
+    const lat = stylist.user?.location?.coordinates?.[1];
+    const lng = stylist.user?.location?.coordinates?.[0];
+    
+    if (typeof lat !== 'number' || typeof lng !== 'number' || 
+        isNaN(lat) || isNaN(lng) || 
+        lat === 0 || lng === 0) {
+      console.warn('Invalid stylist coordinates:', stylist._id, lat, lng);
+      return null;
+    }
+    
     return (
       <Marker
         key={stylist._id}
         coordinate={{
-          latitude: stylist.user?.location?.coordinates?.[1] || 0,
-          longitude: stylist.user?.location?.coordinates?.[0] || 0,
+          latitude: lat,
+          longitude: lng,
         }}
         onPress={() => onStylistSelect(stylist)}
         anchor={{ x: 0.5, y: 1 }}
@@ -262,7 +335,7 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
               {stylist.user?.name}
             </Text>
             <Text style={styles.markerInfoSubText}>
-              ⭐ {(stylist.rating || 0).toFixed(1)} • {LocationService.formatDistance(stylist.distance)}
+              ⭐ {typeof stylist.rating === 'number' ? stylist.rating.toFixed(1) : (stylist.rating?.average || 0).toFixed(1)} • {LocationService.formatDistance(stylist.distance)}
             </Text>
           </View>
         )}
@@ -271,11 +344,20 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
   };
 
   const renderUserLocationMarker = () => {
-    if (!userLocation) return null;
+    if (!userLocation || 
+        typeof userLocation.latitude !== 'number' || 
+        typeof userLocation.longitude !== 'number' ||
+        isNaN(userLocation.latitude) || 
+        isNaN(userLocation.longitude)) {
+      return null;
+    }
 
     return (
       <Marker
-        coordinate={userLocation}
+        coordinate={{
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+        }}
         anchor={{ x: 0.5, y: 0.5 }}
       >
         <View style={styles.userMarker}>
@@ -286,11 +368,23 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
   };
 
   const renderSearchRadius = () => {
-    if (!userLocation) return null;
+    if (!userLocation || 
+        typeof userLocation.latitude !== 'number' || 
+        typeof userLocation.longitude !== 'number' ||
+        isNaN(userLocation.latitude) || 
+        isNaN(userLocation.longitude) ||
+        typeof searchRadius !== 'number' ||
+        isNaN(searchRadius) ||
+        searchRadius <= 0) {
+      return null;
+    }
 
     return (
       <Circle
-        center={userLocation}
+        center={{
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+        }}
         radius={searchRadius * 1000} // Convert km to meters
         strokeColor={COLORS.PRIMARY}
         strokeWidth={2}
@@ -322,13 +416,12 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
       <MapView
         ref={mapRef}
         style={styles.map}
-        initialRegion={region || {
-          latitude: -17.8292, // Harare, Zimbabwe default
+        initialRegion={{
+          latitude: -17.8292,
           longitude: 31.0522,
-          latitudeDelta: LATITUDE_DELTA,
-          longitudeDelta: LONGITUDE_DELTA,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
         }}
-        region={region || undefined}
         onMapReady={handleMapReady}
         onRegionChangeComplete={handleRegionChangeComplete}
         showsUserLocation={false} // We'll use custom marker
@@ -338,10 +431,30 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
         loadingEnabled={true}
         loadingIndicatorColor={COLORS.PRIMARY}
         loadingBackgroundColor={COLORS.WHITE}
+        mapType="standard"
+        // OpenStreetMap configuration (completely free!)
+        provider={undefined} // Use default provider (OpenStreetMap)
+        // Enable better performance and caching
+        cacheEnabled={true}
+        maxZoomLevel={20}
+        minZoomLevel={3}
+        // Improved user experience
+        showsPointsOfInterest={true}
+        showsBuildings={true}
+        showsTraffic={false}
+        rotateEnabled={true}
+        scrollEnabled={true}
+        zoomEnabled={true}
+        pitchEnabled={false}
       >
-        {renderUserLocationMarker()}
-        {renderSearchRadius()}
-        {stylists.map(renderStylistMarker)}
+        {userLocation && renderUserLocationMarker()}
+        {userLocation && searchRadius > 0 && renderSearchRadius()}
+        {Array.isArray(stylists) && stylists.filter(stylist => 
+          stylist && 
+          stylist.user?.location?.coordinates && 
+          Array.isArray(stylist.user.location.coordinates) &&
+          stylist.user.location.coordinates.length >= 2
+        ).map(renderStylistMarker)}
       </MapView>
 
       {/* Loading overlay */}
@@ -373,6 +486,7 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
                 longitudeDelta: region.longitudeDelta * 0.5,
               };
               mapRef.current.animateToRegion(zoomedIn, 300);
+              setRegion(zoomedIn);
             }
           }}
         >
@@ -389,6 +503,7 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
                 longitudeDelta: region.longitudeDelta * 2,
               };
               mapRef.current.animateToRegion(zoomedOut, 300);
+              setRegion(zoomedOut);
             }
           }}
         >
@@ -410,15 +525,29 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
 
 // Main component that chooses between native and web versions
 const StylistMap: React.FC<StylistMapProps> = (props) => {
+  // Validate props to prevent undefined errors
+  const safeProps = {
+    ...props,
+    stylists: Array.isArray(props.stylists) ? props.stylists : [],
+    userLocation: props.userLocation && 
+                  typeof props.userLocation.latitude === 'number' && 
+                  typeof props.userLocation.longitude === 'number' ? 
+                  props.userLocation : null,
+    searchRadius: typeof props.searchRadius === 'number' && 
+                  props.searchRadius > 0 ? 
+                  props.searchRadius : BOOKING_CONFIG.SEARCH_RADIUS_KM,
+    isLoading: Boolean(props.isLoading),
+  };
+
   // Return web fallback for web platform
   if (Platform.OS === 'web') {
-    return <WebMapFallback {...props} />;
+    return <WebMapFallback {...safeProps} />;
   }
   
   // Return native map component wrapped in error boundary for mobile platforms
   return (
-    <TurboModuleErrorBoundary fallback={<WebMapFallback {...props} />}>
-      <NativeMapComponent {...props} />
+    <TurboModuleErrorBoundary fallback={<WebMapFallback {...safeProps} />}>
+      <NativeMapComponent {...safeProps} />
     </TurboModuleErrorBoundary>
   );
 };
@@ -627,7 +756,70 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: SPACING.XL,
-    backgroundColor: COLORS.GRAY_100,
+    backgroundColor: COLORS.BACKGROUND,
+  },
+  webMapContainer: {
+    flex: 1,
+    position: 'relative',
+    padding: SPACING.MD,
+    backgroundColor: COLORS.BACKGROUND,
+  },
+  webMapCloseButton: {
+    position: 'absolute',
+    top: SPACING.LG,
+    right: SPACING.LG,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.ERROR,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: COLORS.BLACK,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  webMapResultsContainer: {
+    position: 'absolute',
+    bottom: SPACING.LG,
+    left: SPACING.LG,
+    right: SPACING.LG,
+    backgroundColor: COLORS.WHITE,
+    paddingHorizontal: SPACING.MD,
+    paddingVertical: SPACING.SM,
+    borderRadius: BORDER_RADIUS.LG,
+    shadowColor: COLORS.BLACK,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  webMapResultsText: {
+    fontSize: 14,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  enableMapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: SPACING.LG,
+    paddingVertical: SPACING.MD,
+    borderRadius: BORDER_RADIUS.LG,
+    marginTop: SPACING.LG,
+    shadowColor: COLORS.BLACK,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  enableMapButtonText: {
+    color: COLORS.WHITE,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: SPACING.SM,
   },
   webMapTitle: {
     fontSize: 24,

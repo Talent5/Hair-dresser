@@ -218,12 +218,19 @@ export default function StylistLocationUpdate() {
       <MapView
         ref={mapRef}
         style={styles.map}
-        region={region}
+        provider={null} // Use platform default (OpenStreetMap on Android, Apple Maps on iOS)
+        initialRegion={region || {
+          latitude: -17.8292, // Harare, Zimbabwe default
+          longitude: 31.0522,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        }}
         onPress={handleMapPress}
         showsUserLocation={false}
         showsMyLocationButton={false}
         showsCompass={true}
         showsScale={true}
+        mapType="standard"
       >
         {selectedLocation && (
           <Marker
