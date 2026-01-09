@@ -4,7 +4,8 @@ const Joi = require('joi');
 const User = require('../models/User');
 const Stylist = require('../models/Stylist');
 const { asyncHandler, ValidationError, UnauthorizedError, ConflictError } = require('../middleware/errorHandler');
-const { rateLimitAuth } = require('../middleware/auth');
+const { rateLimitAuth, authMiddleware } = require('../middleware/auth');
+const { getAuthenticationParameters } = require('../utils/imagekit');
 
 const router = express.Router();
 
@@ -419,5 +420,27 @@ router.get('/verify-token', async (req, res, next) => {
     });
   }
 });
+
+// @route   GET /api/auth/imagekit-auth
+// @desc    Get ImageKit authentication parameters for client-side upload
+// @access  Private
+router.get('/imagekit-auth', authMiddleware, asyncHandler(async (req, res) => {
+  try {
+    const authParams = getAuthenticationParameters();
+    
+    res.json({
+      success: true,
+      message: 'ImageKit authentication parameters retrieved successfully',
+      data: authParams
+    });
+  } catch (error) {
+    console.error('ImageKit auth error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get ImageKit authentication parameters',
+      error: error.message
+    });
+  }
+}));
 
 module.exports = router;

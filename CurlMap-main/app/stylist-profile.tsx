@@ -15,6 +15,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AuthContext from '../contexts/AuthContext';
 import { LocationService } from '../utils/location';
+import { PortfolioGallery } from '../components/PortfolioGallery';
 import api from '../services/api';
 
 const { width } = Dimensions.get('window');
@@ -453,24 +454,38 @@ const StylistProfileScreen = () => {
     </View>
   );
 
-  const renderPortfolio = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Portfolio</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.portfolioContainer}>
-          {stylist?.portfolio.map((image, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.portfolioImage}
-              onPress={() => setCurrentImageIndex(index)}
-            >
-              <Image source={{ uri: image }} style={styles.portfolioImageStyle} />
-            </TouchableOpacity>
-          ))}
+  const renderPortfolio = () => {
+    // Transform portfolio data for the gallery component
+    const portfolioImages = (stylist?.portfolio || []).map((item: any) => ({
+      _id: item._id || String(Math.random()),
+      imageUrl: typeof item === 'string' ? item : (item.imageUrl || item),
+      thumbnailUrl: typeof item === 'object' ? item.thumbnailUrl : undefined,
+      caption: typeof item === 'object' ? item.caption : undefined,
+      service: typeof item === 'object' ? item.service : undefined,
+      likes: typeof item === 'object' ? item.likes : 0,
+    }));
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Portfolio</Text>
+          <Text style={styles.portfolioCount}>{portfolioImages.length} photos</Text>
         </View>
-      </ScrollView>
-    </View>
-  );
+        
+        {portfolioImages.length > 0 ? (
+          <PortfolioGallery images={portfolioImages} columns={3} />
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="images-outline" size={48} color="#6b7280" />
+            <Text style={styles.emptyStateText}>No portfolio images yet</Text>
+            <Text style={styles.emptyStateSubtext}>
+              This stylist hasn't added any portfolio images yet
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   const renderActionButtons = () => (
     <View style={styles.actionButtons}>
@@ -762,6 +777,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#212529',
     marginBottom: 15,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  portfolioCount: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '600',
   },
   specialtiesContainer: {
     flexDirection: 'row',

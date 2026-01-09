@@ -46,7 +46,12 @@ export default function StylistMenu() {
   };
 
   const handleManagePortfolio = () => {
-    // Navigate to business portfolio management (work samples, business info)
+    // Navigate to portfolio management (upload and manage photos)
+    router.push('/portfolio-management');
+  };
+
+  const handleBusinessInfo = () => {
+    // Navigate to business portfolio/info (business name, bio, etc.)
     router.push('/business-portfolio');
   };
 
@@ -124,10 +129,18 @@ export default function StylistMenu() {
           color: COLORS.PRIMARY,
         },
         {
-          icon: 'briefcase-outline',
-          title: 'Business Portfolio',
-          subtitle: 'Manage work gallery, bio & business info',
+          icon: 'images-outline',
+          title: 'Manage Portfolio',
+          subtitle: 'Upload and manage your work photos',
           onPress: handleManagePortfolio,
+          rightElement: 'arrow',
+          color: '#ff6b6b',
+        },
+        {
+          icon: 'briefcase-outline',
+          title: 'Business Information',
+          subtitle: 'Business name, bio & specialties',
+          onPress: handleBusinessInfo,
           rightElement: 'arrow',
           color: COLORS.SUCCESS,
         },

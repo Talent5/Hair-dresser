@@ -6,6 +6,8 @@ const Stylist = require('../models/Stylist');
 const Booking = require('../models/Booking');
 const { asyncHandler, ValidationError, NotFoundError } = require('../middleware/errorHandler');
 const { authMiddleware: auth } = require('../middleware/auth');
+const { uploadSingleImage, uploadMultipleImages } = require('../middleware/uploadImage');
+const { deleteImage } = require('../utils/imagekit');
 
 const router = express.Router();
 
@@ -1508,15 +1510,22 @@ router.get('/:id/portfolio', asyncHandler(async (req, res) => {
 }));
 
 // @route   POST /api/stylists/portfolio
-// @desc    Add portfolio item
+// @desc    Add portfolio item (with image upload)
 // @access  Private (Stylist only)
-router.post('/portfolio', auth, asyncHandler(async (req, res) => {
+router.post('/portfolio', auth, uploadSingleImage('image', 'portfolio'), asyncHandler(async (req, res) => {
   // Find or create stylist profile
   const stylist = await getOrCreateStylistProfile(req.user._id);
 
+  // Check if image was uploaded
+  if (!req.imageData) {
+    return res.status(400).json({
+      success: false,
+      message: 'Portfolio image is required'
+    });
+  }
+
   // Validation schema for portfolio item
   const portfolioSchema = Joi.object({
-    imageUrl: Joi.string().uri().required(),
     caption: Joi.string().max(200).allow(''),
     service: Joi.string().valid(
       'braids', 'weaves', 'natural_hair', 'relaxed_hair', 'cuts', 
@@ -1533,7 +1542,9 @@ router.post('/portfolio', auth, asyncHandler(async (req, res) => {
 
   // Create new portfolio item
   const portfolioItem = {
-    imageUrl: value.imageUrl,
+    imageUrl: req.imageData.url,
+    fileId: req.imageData.fileId,
+    thumbnailUrl: req.imageData.thumbnailUrl,
     caption: value.caption,
     service: value.service,
     uploadedAt: new Date(),
@@ -1556,6 +1567,89 @@ router.post('/portfolio', auth, asyncHandler(async (req, res) => {
   });
 }));
 
+// @route   POST /api/stylists/portfolio/multiple
+// @desc    Add multiple portfolio items at once
+// @access  Private (Stylist only)
+router.post('/portfolio/multiple', auth, uploadMultipleImages('images', 10, 'portfolio'), asyncHandler(async (req, res) => {
+  // Find or create stylist profile
+  const stylist = await getOrCreateStylistProfile(req.user._id);
+
+  // Check if images were uploaded
+  if (!req.imagesData || req.imagesData.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'At least one portfolio image is required'
+    });
+  }
+
+  // Parse the portfolio data (sent as JSON string)
+  let portfolioData = [];
+  try {
+    portfolioData = req.body.portfolioData ? JSON.parse(req.body.portfolioData) : [];
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid portfolio data format'
+    });
+  }
+
+  // Validation schema for each portfolio item
+  const portfolioSchema = Joi.object({
+    caption: Joi.string().max(200).allow(''),
+    service: Joi.string().valid(
+      'braids', 'weaves', 'natural_hair', 'relaxed_hair', 'cuts', 
+      'color', 'locs', 'extensions', 'treatments', 'styling', 
+      'children_hair', 'men_cuts', 'beard_grooming'
+    ).required(),
+    tags: Joi.array().items(Joi.string()).default([])
+  });
+
+  const portfolioItems = [];
+
+  // Create portfolio items for each uploaded image
+  for (let i = 0; i < req.imagesData.length; i++) {
+    const imageData = req.imagesData[i];
+    const itemData = portfolioData[i] || {};
+
+    const { error, value } = portfolioSchema.validate(itemData);
+    if (error) {
+      // If validation fails, delete already uploaded images
+      for (const img of req.imagesData) {
+        try {
+          await deleteImage(img.fileId);
+        } catch (delError) {
+          console.error('Error deleting image:', delError);
+        }
+      }
+      throw new ValidationError('Invalid portfolio data', error.details.map(d => d.message));
+    }
+
+    const portfolioItem = {
+      imageUrl: imageData.url,
+      fileId: imageData.fileId,
+      thumbnailUrl: imageData.thumbnailUrl,
+      caption: value.caption,
+      service: value.service,
+      uploadedAt: new Date(),
+      likes: 0
+    };
+
+    portfolioItems.push(portfolioItem);
+  }
+
+  // Add all items to portfolio
+  stylist.portfolio.push(...portfolioItems);
+  await stylist.save();
+
+  res.status(201).json({
+    success: true,
+    message: `${portfolioItems.length} portfolio items added successfully`,
+    data: {
+      portfolioItems: portfolioItems
+    }
+  });
+}));
+
 // @route   DELETE /api/stylists/portfolio/:itemId
 // @desc    Remove portfolio item
 // @access  Private (Stylist only)
@@ -1572,6 +1666,19 @@ router.delete('/portfolio/:itemId', auth, asyncHandler(async (req, res) => {
 
   if (itemIndex === -1) {
     throw new NotFoundError('Portfolio item');
+  }
+
+  // Get the item to delete (to access fileId)
+  const itemToDelete = stylist.portfolio[itemIndex];
+
+  // Delete image from ImageKit if fileId exists
+  if (itemToDelete.fileId) {
+    try {
+      await deleteImage(itemToDelete.fileId);
+    } catch (error) {
+      console.error('Error deleting image from ImageKit:', error);
+      // Continue with database deletion even if ImageKit deletion fails
+    }
   }
 
   stylist.portfolio.splice(itemIndex, 1);

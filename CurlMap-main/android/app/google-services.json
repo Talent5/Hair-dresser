@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "382218411772",
+    "project_id": "curlhair-2ae68",
+    "storage_bucket": "curlhair-2ae68.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:382218411772:android:555be1debcb09f52b70179",
+        "android_client_info": {
+          "package_name": "com.curlmap.stylistapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "382218411772-10l4vv9tjkvrpu7i80qik71p52g3e205.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRdGmSQfsKNWD9MrQqhNbuPm5yV3xV4BI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "382218411772-10l4vv9tjkvrpu7i80qik71p52g3e205.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

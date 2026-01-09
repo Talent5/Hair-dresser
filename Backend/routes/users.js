@@ -1,6 +1,8 @@
 const express = require('express');
 const User = require('../models/User');
 const { asyncHandler, ValidationError } = require('../middleware/errorHandler');
+const { uploadSingleImage } = require('../middleware/uploadImage');
+const { deleteImage } = require('../utils/imagekit');
 const Joi = require('joi');
 const router = express.Router();
 
@@ -76,6 +78,102 @@ router.put('/profile', asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: 'Profile updated successfully',
+    data: { user: updatedUser }
+  });
+}));
+
+// @route   POST /api/users/profile/avatar
+// @desc    Upload user profile avatar
+// @access  Private
+router.post('/profile/avatar', uploadSingleImage('avatar', 'profiles'), asyncHandler(async (req, res) => {
+  if (!req.imageData) {
+    return res.status(400).json({
+      success: false,
+      message: 'No image file provided'
+    });
+  }
+
+  const user = await User.findById(req.userId);
+  
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: 'User not found'
+    });
+  }
+
+  // Delete old profile image if exists
+  if (user.profileImage && user.profileImage.fileId) {
+    try {
+      await deleteImage(user.profileImage.fileId);
+    } catch (error) {
+      console.error('Error deleting old profile image:', error);
+      // Continue even if deletion fails
+    }
+  }
+
+  // Update user profile image
+  user.profileImage = {
+    url: req.imageData.url,
+    fileId: req.imageData.fileId,
+    thumbnailUrl: req.imageData.thumbnailUrl
+  };
+  user.updatedAt = new Date();
+
+  await user.save();
+
+  // Return updated user without password
+  const updatedUser = await User.findById(req.userId).select('-password');
+
+  res.json({
+    success: true,
+    message: 'Profile avatar uploaded successfully',
+    data: { 
+      user: updatedUser,
+      avatar: req.imageData
+    }
+  });
+}));
+
+// @route   DELETE /api/users/profile/avatar
+// @desc    Delete user profile avatar
+// @access  Private
+router.delete('/profile/avatar', asyncHandler(async (req, res) => {
+  const user = await User.findById(req.userId);
+  
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: 'User not found'
+    });
+  }
+
+  if (!user.profileImage || !user.profileImage.fileId) {
+    return res.status(400).json({
+      success: false,
+      message: 'No profile avatar to delete'
+    });
+  }
+
+  // Delete from ImageKit
+  try {
+    await deleteImage(user.profileImage.fileId);
+  } catch (error) {
+    console.error('Error deleting profile image from ImageKit:', error);
+    // Continue to remove from database even if ImageKit deletion fails
+  }
+
+  // Remove from user record
+  user.profileImage = undefined;
+  user.updatedAt = new Date();
+
+  await user.save();
+
+  const updatedUser = await User.findById(req.userId).select('-password');
+
+  res.json({
+    success: true,
+    message: 'Profile avatar deleted successfully',
     data: { user: updatedUser }
   });
 }));

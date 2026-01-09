@@ -1,13 +1,18 @@
+// Google Maps API Keys - Replace with your actual API keys from Google Cloud Console
+// For production, set these as environment variables
+const GOOGLE_MAPS_API_KEY_ANDROID = process.env.GOOGLE_MAPS_API_KEY_ANDROID || process.env.GOOGLE_MAPS_API_KEY || 'YOUR_ANDROID_GOOGLE_MAPS_API_KEY';
+const GOOGLE_MAPS_API_KEY_IOS = process.env.GOOGLE_MAPS_API_KEY_IOS || process.env.GOOGLE_MAPS_API_KEY || 'YOUR_IOS_GOOGLE_MAPS_API_KEY';
+
 export default {
   "expo": {
     "name": "CurlMap - Hair Stylist Platform",
     "slug": "curlmap-stylist-app",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "curlmap",
     "userInterfaceStyle": "light",
-        "newArchEnabled": true,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
@@ -20,6 +25,9 @@ export default {
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.curlmap.stylistapp",
+      "config": {
+        "googleMapsApiKey": GOOGLE_MAPS_API_KEY_IOS
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app uses location to find nearby hair stylists and show your location on the map.",
         "NSLocationAlwaysUsageDescription": "This app uses location to find nearby hair stylists and show your location on the map.",
@@ -35,6 +43,12 @@ export default {
       },
       "package": "com.curlmap.stylistapp",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": GOOGLE_MAPS_API_KEY_ANDROID
+        }
+      },
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -56,6 +70,9 @@ export default {
     },
     "plugins": [
       "expo-router",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-google-signin/google-signin",
       [
         "expo-location",
         {
@@ -93,6 +110,9 @@ export default {
       "router": {},
       "eas": {
         "projectId": "dd9e1c99-e945-492b-a998-e95c9ba9d4e6"
+      },
+      "firebase": {
+        "webClientId": "382218411772-10l4vv9tjkvrpu7i80qik71p52g3e205.apps.googleusercontent.com"
       }
     }
   }

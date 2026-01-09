@@ -16,6 +16,7 @@ import * as Location from 'expo-location';
 let MapView: any = null;
 let Marker: any = null;
 let Circle: any = null;
+let PROVIDER_GOOGLE: any = null;
 
 if (Platform.OS !== 'web') {
   try {
@@ -23,6 +24,7 @@ if (Platform.OS !== 'web') {
     MapView = maps.default || maps.MapView;
     Marker = maps.Marker;
     Circle = maps.Circle;
+    PROVIDER_GOOGLE = maps.PROVIDER_GOOGLE;
   } catch (error) {
     console.warn('react-native-maps not available:', error);
   }
@@ -416,6 +418,7 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
       <MapView
         ref={mapRef}
         style={styles.map}
+        provider={PROVIDER_GOOGLE} // Use Google Maps
         initialRegion={{
           latitude: -17.8292,
           longitude: 31.0522,
@@ -432,8 +435,7 @@ const NativeMapComponent: React.FC<StylistMapProps> = ({
         loadingIndicatorColor={COLORS.PRIMARY}
         loadingBackgroundColor={COLORS.WHITE}
         mapType="standard"
-        // OpenStreetMap configuration (completely free!)
-        provider={undefined} // Use default provider (OpenStreetMap)
+        // Google Maps configuration
         // Enable better performance and caching
         cacheEnabled={true}
         maxZoomLevel={20}

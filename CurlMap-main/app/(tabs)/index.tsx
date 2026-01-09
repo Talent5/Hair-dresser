@@ -84,6 +84,21 @@ export default function HomeScreen() {
 
           <TouchableOpacity 
             style={styles.actionButton}
+            onPress={() => router.push('/discover-stylists')}
+          >
+            <View style={[styles.actionIcon, styles.portfolioIcon]}>
+              <Text style={styles.actionIconText}>📸</Text>
+            </View>
+            <View style={styles.actionContent}>
+              <Text style={styles.actionTitle}>Browse Portfolios</Text>
+              <Text style={styles.actionDescription}>
+                View stylist portfolios and their work - FREE!
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.actionButton}
             onPress={() => router.push('/(tabs)/chat')}
           >
             <View style={[styles.actionIcon, styles.chatIcon]}>
@@ -214,6 +229,9 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     backgroundColor: '#007bff',
+  },
+  portfolioIcon: {
+    backgroundColor: '#ff6b6b',
   },
   chatIcon: {
     backgroundColor: '#6f42c1',

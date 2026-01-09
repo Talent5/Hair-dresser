@@ -60,6 +60,12 @@ const stylistSchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    fileId: {
+      type: String  // ImageKit file ID for deletion
+    },
+    thumbnailUrl: {
+      type: String  // ImageKit thumbnail URL for optimized loading
+    },
     caption: {
       type: String,
       maxlength: [200, 'Caption cannot exceed 200 characters']

@@ -63,8 +63,9 @@ const userSchema = new mongoose.Schema({
     country: { type: String, default: 'Zimbabwe' }
   },
   profileImage: {
-    type: String,
-    default: null
+    url: String,
+    fileId: String,  // ImageKit file ID for deletion
+    thumbnailUrl: String  // ImageKit thumbnail URL for optimized loading
   },
   isActive: {
     type: Boolean,

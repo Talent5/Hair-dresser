@@ -200,7 +200,7 @@ class ApiService {
       name: 'avatar.jpg',
     } as any);
 
-    const response = await this.client.post('/users/avatar', formData, {
+    const response = await this.client.post('/users/profile/avatar', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -214,7 +214,7 @@ class ApiService {
     return response.data;
   }
 
-  async addPortfolioItem(imageUri: string, caption: string, serviceType: string, tags: string[]): Promise<ApiResponse<any>> {
+  async addPortfolioItem(imageUri: string, caption: string, serviceType: string, tags: string[] = []): Promise<ApiResponse<any>> {
     const formData = new FormData();
     formData.append('image', {
       uri: imageUri,
@@ -222,10 +222,41 @@ class ApiService {
       name: 'portfolio.jpg',
     } as any);
     formData.append('caption', caption);
-    formData.append('serviceType', serviceType);
-    formData.append('tags', JSON.stringify(tags));
+    formData.append('service', serviceType);
+    if (tags && tags.length > 0) {
+      formData.append('tags', JSON.stringify(tags));
+    }
 
     const response = await this.client.post('/stylists/portfolio', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
+  async addMultiplePortfolioItems(
+    images: Array<{ uri: string; caption: string; service: string }>
+  ): Promise<ApiResponse<any>> {
+    const formData = new FormData();
+    
+    // Add all images
+    images.forEach((image, index) => {
+      formData.append('images', {
+        uri: image.uri,
+        type: 'image/jpeg',
+        name: `portfolio_${index}.jpg`,
+      } as any);
+    });
+
+    // Add portfolio data as JSON string
+    const portfolioData = images.map(img => ({
+      caption: img.caption,
+      service: img.service
+    }));
+    formData.append('portfolioData', JSON.stringify(portfolioData));
+
+    const response = await this.client.post('/stylists/portfolio/multiple', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

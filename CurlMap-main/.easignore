@@ -1,0 +1,31 @@
+# Ignore gradle caches to prevent lock issues
+android/.gradle
+android/.gradle/
+android/.gradle/**
+android/build
+android/build/
+android/build/**
+android/app/build
+android/app/build/
+android/app/build/**
+.gradle
+.gradle/
+.gradle/**
+**/.gradle
+**/.gradle/
+**/.gradle/**
+**/checksums.lock
+**/*.lock
+
+# Ignore node_modules (EAS will reinstall)
+node_modules
+node_modules/
+node_modules/**
+
+# Ignore iOS build artifacts
+ios/build/
+ios/Pods/
+
+# Ignore temporary files
+*.log
+*.tmp

@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -198,6 +199,30 @@ const StylistCard: React.FC<StylistCardProps> = ({
         </Text>
       )}
 
+      {/* Portfolio Preview */}
+      {stylist.portfolio && stylist.portfolio.length > 0 && (
+        <View style={styles.portfolioPreview}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.portfolioScroll}
+          >
+            {stylist.portfolio.slice(0, 4).map((image: any, index: number) => (
+              <Image
+                key={index}
+                source={{ uri: typeof image === 'string' ? image : (image.thumbnailUrl || image.imageUrl) }}
+                style={styles.portfolioImage}
+              />
+            ))}
+            {stylist.portfolio.length > 4 && (
+              <View style={styles.moreImagesOverlay}>
+                <Text style={styles.moreImagesText}>+{stylist.portfolio.length - 4}</Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Specialties */}
       {stylist.specialties && stylist.specialties.length > 0 && (
         <View style={styles.specialtiesContainer}>
@@ -339,6 +364,30 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_SECONDARY,
     lineHeight: 20,
     marginBottom: SPACING.SM,
+  },
+  portfolioPreview: {
+    marginBottom: SPACING.SM,
+  },
+  portfolioScroll: {
+    gap: SPACING.XS,
+  },
+  portfolioImage: {
+    width: 80,
+    height: 80,
+    borderRadius: BORDER_RADIUS.MD,
+  },
+  moreImagesOverlay: {
+    width: 80,
+    height: 80,
+    borderRadius: BORDER_RADIUS.MD,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moreImagesText: {
+    color: COLORS.WHITE,
+    fontSize: FONT_SIZES.MD,
+    fontWeight: 'bold',
   },
   specialtiesContainer: {
     flexDirection: 'row',

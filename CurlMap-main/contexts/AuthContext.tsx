@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import { User, RegisterForm } from '@/types';
 import { API_CONFIG } from '@/constants';
 import { apiService } from '@/services/api';
+import { firebaseAuthService, FirebaseUser } from '@/services/firebaseAuth';
 
 export interface UserProfile {
   id: string;
@@ -33,6 +34,7 @@ export interface AuthState {
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>;
   forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -571,9 +573,152 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      console.log('Auth Context - Google Sign-In attempt');
+      setAuthState(prev => ({ ...prev, isLoading: true }));
+      
+      const result = await firebaseAuthService.signInWithGoogle();
+      
+      if (result.success && result.user && result.idToken) {
+        console.log('Auth Context - Google Sign-In successful:', result.user.email);
+        
+        // Send the Firebase ID token to your backend to authenticate/create user
+        try {
+          const response = await fetch(`${API_CONFIG.BASE_URL}/auth/google`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              idToken: result.idToken,
+              firebaseUid: result.user.uid,
+              email: result.user.email,
+              displayName: result.user.displayName,
+              photoURL: result.user.photoURL,
+            }),
+          });
+          
+          const backendResult = await response.json();
+          
+          if (response.ok && backendResult.success && backendResult.data) {
+            const { user, tokens, stylistProfile } = backendResult.data;
+            const userProfile = convertUserToProfile(user, !!stylistProfile, stylistProfile);
+            
+            // Store auth data securely
+            await safeSecureStoreSet('auth_token', tokens.accessToken);
+            await safeSecureStoreSet('refresh_token', tokens.refreshToken);
+            await safeSecureStoreSet('user_data', JSON.stringify(userProfile));
+            
+            setAuthState({
+              isAuthenticated: true,
+              isLoading: false,
+              user: userProfile,
+              token: tokens.accessToken,
+            });
+            
+            console.log('Auth Context - Google login with backend successful');
+            return { success: true };
+          } else {
+            // If backend doesn't have Google auth endpoint yet, use Firebase auth directly
+            console.log('Auth Context - Backend Google auth not available, using Firebase auth directly');
+            
+            const firebaseUserProfile: UserProfile = {
+              id: result.user.uid,
+              name: result.user.displayName || 'User',
+              email: result.user.email || '',
+              avatar: result.user.photoURL || undefined,
+              rating: 0,
+              reviewCount: 0,
+              memberSince: new Date().toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long' 
+              }),
+              isVerified: result.user.emailVerified,
+              phone: result.user.phoneNumber || undefined,
+              bio: '',
+              specialties: [],
+              location: {
+                address: '',
+                coordinates: [0, 0],
+              },
+              isActive: true,
+              isStylist: false,
+            };
+            
+            await safeSecureStoreSet('auth_token', result.idToken);
+            await safeSecureStoreSet('user_data', JSON.stringify(firebaseUserProfile));
+            
+            setAuthState({
+              isAuthenticated: true,
+              isLoading: false,
+              user: firebaseUserProfile,
+              token: result.idToken,
+            });
+            
+            return { success: true };
+          }
+        } catch (backendError) {
+          console.log('Auth Context - Backend auth failed, using Firebase auth:', backendError);
+          
+          // Fallback to Firebase-only auth if backend is unavailable
+          const firebaseUserProfile: UserProfile = {
+            id: result.user.uid,
+            name: result.user.displayName || 'User',
+            email: result.user.email || '',
+            avatar: result.user.photoURL || undefined,
+            rating: 0,
+            reviewCount: 0,
+            memberSince: new Date().toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long' 
+            }),
+            isVerified: result.user.emailVerified,
+            phone: result.user.phoneNumber || undefined,
+            bio: '',
+            specialties: [],
+            location: {
+              address: '',
+              coordinates: [0, 0],
+            },
+            isActive: true,
+            isStylist: false,
+          };
+          
+          await safeSecureStoreSet('auth_token', result.idToken);
+          await safeSecureStoreSet('user_data', JSON.stringify(firebaseUserProfile));
+          
+          setAuthState({
+            isAuthenticated: true,
+            isLoading: false,
+            user: firebaseUserProfile,
+            token: result.idToken,
+          });
+          
+          return { success: true };
+        }
+      } else {
+        console.log('Auth Context - Google Sign-In failed:', result.error);
+        setAuthState(prev => ({ ...prev, isLoading: false }));
+        return { 
+          success: false, 
+          error: result.error || 'Google Sign-In failed'
+        };
+      }
+    } catch (error: any) {
+      console.error('Auth Context - Google Sign-In error:', error);
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+      return { 
+        success: false, 
+        error: error.message || 'Failed to sign in with Google' 
+      };
+    }
+  };
+
   const contextValue: AuthContextType = {
     ...authState,
     login,
+    loginWithGoogle,
     register,
     forgotPassword,
     logout,
